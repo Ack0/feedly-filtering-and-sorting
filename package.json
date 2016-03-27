@@ -1,0 +1,17 @@
+{
+  "name": "Feedly_filtering_and_sorting",
+  "version": "1.0.0",
+  "description": "Enhance the feedly website with advanced filtering and sorting capabilities",
+  "main": "src/index.js",
+  "author": "Soufiane Sakhi",
+  "license": "MIT",
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-contrib-concat": "^1.0.0",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-contrib-watch": "^1.0.0",
+    "grunt-string-replace": "^1.2.1",
+    "grunt-ts": "^5.4.0",
+    "typings": "^0.7.9"
+  }
+}
