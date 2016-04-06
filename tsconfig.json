@@ -1,7 +1,9 @@
 {
     "files": [
         "src/index.ts",
-        "src/constants.ts"
+        "src/Constants.ts",
+        "src/Subscription.ts",
+        "src/DAO.ts"
     ],
     "compileOnSave": true,
     "compilerOptions": {

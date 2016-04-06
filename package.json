@@ -2,7 +2,7 @@
   "name": "Feedly_filtering_and_sorting",
   "version": "1.0.0",
   "description": "Enhance the feedly website with advanced filtering and sorting capabilities",
-  "main": "src/index.js",
+  "main": "src/index.ts",
   "author": "Soufiane Sakhi",
   "license": "MIT",
   "devDependencies": {

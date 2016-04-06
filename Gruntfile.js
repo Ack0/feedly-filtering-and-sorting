@@ -27,6 +27,14 @@ module.exports = function(grunt) {
                         }, {
                             pattern: /[^\r\n]*=\srequire\([^\r\n]*\s*/ig,
                             replacement: ''
+                        },
+                        {
+                            pattern: /\s*exports\.[^=]*=[^;]*;/ig,
+                            replacement: ''
+                        },
+                        {
+                            pattern: /= new[^\.]*\./ig,
+                            replacement: '= new '
                         }
                     ]
                 }
