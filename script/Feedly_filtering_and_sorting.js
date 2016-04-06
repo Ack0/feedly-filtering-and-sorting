@@ -15,30 +15,29 @@
 // @grant       GM_getValue
 // ==/UserScript==
 
-var DAO = (function () {
-    function DAO(path) {
-        this.path = path;
-    }
-    DAO.prototype.deserializeDirectly = function (id, def) {
-        return eval(GM_getValue(id, (def || '({})')));
-    };
-    DAO.prototype.serializeDirectly = function (id, val) {
-        GM_setValue(id, uneval(val));
-    };
-    DAO.prototype.deserialize = function (id, def) {
-        return eval(this.getValue(id, (def || '({})')));
-    };
-    DAO.prototype.serialize = function (id, val) {
-        this.setValue(id, uneval(val));
-    };
-    DAO.prototype.getValue = function (id, value) {
-        return GM_getValue(id, value);
-    };
-    DAO.prototype.setValue = function (id, value) {
-        GM_setValue(id, value);
-    };
-    return DAO;
-}());
+var cst = {
+    "filterIconLink": "https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/128/empty_filter.png",
+    "plusIconLink": "https://cdn0.iconfinder.com/data/icons/social-messaging-ui-color-shapes/128/add-circle-blue-128.png",
+    "eraseIconLink": "https://cdn2.iconfinder.com/data/icons/large-glossy-svg-icons/512/erase_delete_remove_wipe_out-128.png",
+    "closeIconLink": "https://cdn2.iconfinder.com/data/icons/social-productivity-line-art-1/128/close-cancel-128.png",
+    "settingsDivPredecessorSelector": "#feedlyPageHeader",
+    "settingsBtnPredecessorSelector": "#pageActionCustomize",
+    "topicSelector": "#section0_column0 > div",
+    "topicTitleAttribute": "data-title",
+    "nbrRecommendationsSelector": ".nbrRecommendations",
+    "keywordTagStyle": "vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer;",
+    "iconStyle": "vertical-align: middle; height: 20px; width: 20px; cursor: pointer;",
+    "settingsDivSpanStyle": "style='display: inline; vertical-align: middle;'",
+    "profileNameId": "profileName",
+    "profileListId": "profileList",
+    "restrictedOnKeywordsId": "restrictedOnKeywords",
+    "filteredOutKeywordsId": "filteredOutKeywords",
+    "filteringEnabledId": "filteringEnabled",
+    "restrictingEnabledId": "restrictingEnabled",
+    "sortingEnabledId": "sortingEnabled",
+    "sortingTypeId": "sortingType",
+    "toggleSrcAttr": "toggle-src"
+};
 
 var Subscription = (function () {
     function Subscription(path) {
@@ -214,32 +213,46 @@ var TopicManager = (function () {
     return TopicManager;
 }());
 
-var cst = {
-    "filterIconLink": "https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/128/empty_filter.png",
-    "plusIconLink": "https://cdn0.iconfinder.com/data/icons/social-messaging-ui-color-shapes/128/add-circle-blue-128.png",
-    "eraseIconLink": "https://cdn2.iconfinder.com/data/icons/large-glossy-svg-icons/512/erase_delete_remove_wipe_out-128.png",
-    "closeIconLink": "https://cdn2.iconfinder.com/data/icons/social-productivity-line-art-1/128/close-cancel-128.png",
-    "settingsDivPredecessorSelector": "#feedlyPageHeader",
-    "settingsBtnPredecessorSelector": "#pageActionCustomize",
-    "topicSelector": "#section0_column0 > div",
-    "topicTitleAttribute": "data-title",
-    "nbrRecommendationsSelector": ".nbrRecommendations",
-    "keywordTagStyle": "vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer;",
-    "iconStyle": "vertical-align: middle; height: 20px; width: 20px; cursor: pointer;",
-    "settingsDivSpanStyle": "style='display: inline; vertical-align: middle;'",
-    "profileNameId": "profileName",
-    "profileListId": "profileList",
-    "restrictedOnKeywordsId": "restrictedOnKeywords",
-    "filteredOutKeywordsId": "filteredOutKeywords",
-    "filteringEnabledId": "filteringEnabled",
-    "restrictingEnabledId": "restrictingEnabled",
-    "sortingEnabledId": "sortingEnabled",
-    "sortingTypeId": "sortingType",
-    "toggleSrcAttr": "toggle-src"
-};
+var DAO = (function () {
+    function DAO(path) {
+        this.path = path;
+    }
+    DAO.prototype.deserializeDirectly = function (id, def) {
+        return eval(GM_getValue(id, (def || '({})')));
+    };
+    DAO.prototype.serializeDirectly = function (id, val) {
+        GM_setValue(id, uneval(val));
+    };
+    DAO.prototype.deserialize = function (id, def) {
+        return eval(this.getValue(id, (def || '({})')));
+    };
+    DAO.prototype.serialize = function (id, val) {
+        this.setValue(id, uneval(val));
+    };
+    DAO.prototype.getValue = function (id, value) {
+        return GM_getValue(id, value);
+    };
+    DAO.prototype.setValue = function (id, value) {
+        GM_setValue(id, value);
+    };
+    return DAO;
+}());
+
+var CallbackFactory = (function () {
+    function CallbackFactory(owner) {
+        this.owner = owner;
+    }
+    CallbackFactory.prototype.get = function (method) {
+        return function () {
+            method.apply(this.owner, $(this));
+        };
+    };
+    return CallbackFactory;
+}());
 
 var subscription = new Subscription("");
 var topicManager = new TopicManager(subscription);
+var topicCF = new CallbackFactory(topicManager);
 $.fn.insertIndex = function (i) {
     // The element we want to swap with
     var $target = this.parent().children().eq(i);
@@ -349,11 +362,7 @@ $(document).ready(function () {
         topicManager.setKeywordListEvents(subscription.filteredOutKeywords, cst.filteredOutKeywordsId);
     }, true);
     // Reset titles array when changing page
-    NodeCreationObserver.onCreation(".feedUnreadCountHint, .categoryUnreadCountHint", function () {
-        topicManager.resetSorting();
-    });
+    NodeCreationObserver.onCreation(".feedUnreadCountHint, .categoryUnreadCountHint", function () { topicManager.resetSorting(); });
     // New topics listener
-    NodeCreationObserver.onCreation(cst.topicSelector, function () {
-        topicManager.refreshTopic($(this));
-    });
+    NodeCreationObserver.onCreation(cst.topicSelector, function () { topicManager.refreshTopic($(this)); });
 });

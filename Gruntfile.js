@@ -1,4 +1,10 @@
 module.exports = function(grunt) {
+    var files = grunt.file.readJSON('compile.json').files;
+    var srcFiles = [], targetFiles = [];
+    files.forEach(function(file) {
+        srcFiles.push("src/" + file + ".ts");
+        targetFiles.push("target/" + file + ".js");
+    });
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
         deploy: grunt.file.isFile('deploy.json') ? grunt.file.readJSON('deploy.json') : { path: "" },
@@ -9,6 +15,13 @@ module.exports = function(grunt) {
                     removeComments: false,
                     sourceMap: false
                 }
+            }
+        },
+        watch: {
+            files: ['Header.js', 'Gruntfile.js'].concat(srcFiles),
+            tasks: ['default'],
+            options: {
+                interrupt: true
             }
         },
         'string-replace': {
@@ -42,7 +55,7 @@ module.exports = function(grunt) {
         },
         concat: {
             script: {
-                src: ['Header.js', 'target/*.js'],
+                src: ['Header.js'].concat(targetFiles),
                 dest: 'script/<%= pkg.name %>.js'
             }
         },
@@ -54,13 +67,6 @@ module.exports = function(grunt) {
                     var dest = grunt.config('copy.deploy.dest');
                     return dest !== "";
                 }
-            }
-        },
-        watch: {
-            files: grunt.file.readJSON('tsconfig.json').files,
-            tasks: ['default'],
-            options: {
-                interrupt: true
             }
         }
     });

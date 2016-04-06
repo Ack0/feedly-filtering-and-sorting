@@ -5,10 +5,12 @@ import * as $ from "jquery";
 import * as NodeCreationObserver from "node-creation-observer";
 import {TopicManager} from "./TopicManager";
 import {Subscription} from "./Subscription";
+import {CallbackFactory} from "./Utils";
 import {DAO} from "./DAO";
 
 var subscription = new Subscription("");
 var topicManager = new TopicManager(subscription);
+var topicCF = new CallbackFactory(topicManager);
 
 $.fn.insertIndex = function(i) {
     // The element we want to swap with
@@ -135,13 +137,9 @@ $(document).ready(function() {
     }, true);
 
     // Reset titles array when changing page
-    NodeCreationObserver.onCreation(".feedUnreadCountHint, .categoryUnreadCountHint", function () { 
-        topicManager.resetSorting();
-    });
+    NodeCreationObserver.onCreation(".feedUnreadCountHint, .categoryUnreadCountHint", function(){topicManager.resetSorting()});
 
     // New topics listener
-    NodeCreationObserver.onCreation(cst.topicSelector, function() {
-        topicManager.refreshTopic($(this));
-    });
+    NodeCreationObserver.onCreation(cst.topicSelector, function(){topicManager.refreshTopic($(this))});
 
 });
