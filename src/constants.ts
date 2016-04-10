@@ -16,8 +16,6 @@ var cst = {
 
 	"profileNameId": "profileName",
 	"profileListId": "profileList",
-	"restrictedOnKeywordsId": "restrictedOnKeywords",
-	"filteredOutKeywordsId": "filteredOutKeywords",
 	"filteringEnabledId": "filteringEnabled",
 	"restrictingEnabledId": "restrictingEnabled",
 	"sortingEnabledId": "sortingEnabled",

@@ -5,26 +5,14 @@ import * as $ from "jquery";
 import * as NodeCreationObserver from "node-creation-observer";
 import {TopicManager} from "./TopicManager";
 import {Subscription} from "./Subscription";
-import {CallbackFactory} from "./Utils";
+import {FilteringType} from "./Subscription";
+import {callbackBind} from "./Utils";
+import {$id} from "./Utils";
 import {DAO} from "./DAO";
 
 var subscription = new Subscription("");
 var topicManager = new TopicManager(subscription);
-var topicCF = new CallbackFactory(topicManager);
-
-$.fn.insertIndex = function(i) {
-    // The element we want to swap with
-    var $target = this.parent().children().eq(i);
-
-    // Determine the direction of the appended index so we know what side to place it on
-    if (this.index() > i) {
-        $target.before(this);
-    } else {
-        $target.after(this);
-    }
-
-    return this;
-};
+var tmBind = callbackBind(topicManager);
 
 $(document).ready(function() {
     var enableFilteringCheckId = "enableFiltering";
@@ -70,26 +58,26 @@ $(document).ready(function() {
             // Restricted on keyword list
             '<div>' +
             '<span ' + cst.settingsDivSpanStyle + '>Restricted on keyword list: </span>' +
-            topicManager.getKeywordList(subscription.restrictedOnKeywords, cst.restrictedOnKeywordsId) +
+            topicManager.filteringListHTML(FilteringType.RestrictedOn) +
             '</div>' +
 
             // Filtered out keyword list
             '<div>' +
             '<span ' + cst.settingsDivSpanStyle + '>Filtered out keyword list: </span>' +
-            topicManager.getKeywordList(subscription.filteredOutKeywords, cst.filteredOutKeywordsId) +
+            topicManager.filteringListHTML(FilteringType.FilteredOut) +
             '</div>' +
 
             '</div>';
         $(this).after(settingsDiv);
 
         // Set checkbox & select boxes correct state
-        var filteringCheck = topicManager.$id(enableFilteringCheckId);
+        var filteringCheck = $id(enableFilteringCheckId);
         filteringCheck.prop('checked', subscription.filteringEnabled);
-        var restrictingCheck = topicManager.$id(enableRestrictingCheckId);
+        var restrictingCheck = $id(enableRestrictingCheckId);
         restrictingCheck.prop('checked', subscription.restrictingEnabled);
-        var sortingCheck = topicManager.$id(cst.sortingEnabledId);
+        var sortingCheck = $id(cst.sortingEnabledId);
         sortingCheck.prop('checked', subscription.sortingEnabled);
-        var sortingTypeSelect = topicManager.$id(cst.sortingTypeId);
+        var sortingTypeSelect = $id(cst.sortingTypeId);
         sortingTypeSelect.val(subscription.sortingType);
         var dao: DAO = subscription.getDAO();
         // Checkbox & select boxes events
@@ -115,16 +103,16 @@ $(document).ready(function() {
         });
 
         // Setting button events
-        topicManager.$id(settingsBtnId).click(function() {
+        $id(settingsBtnId).click(function() {
             var _this = $(this);
             var current = _this.attr("src");
             var swap = _this.attr(cst.toggleSrcAttr);
             _this.attr('src', swap).attr(cst.toggleSrcAttr, current);
-            topicManager.$id(settingsDivId).toggle();
+            $id(settingsDivId).toggle();
         });
 
         // Settings Div Style
-        topicManager.$id(settingsDivId).css("display", "none")
+        $id(settingsDivId).css("display", "none")
             .css('margin', '25px')
             .css('border-radius', '25px')
             .css('border', '2px solid #336699')
@@ -132,14 +120,13 @@ $(document).ready(function() {
             .css('padding', '20px');
 
         // Events on keyword lists
-        topicManager.setKeywordListEvents(subscription.restrictedOnKeywords, cst.restrictedOnKeywordsId);
-        topicManager.setKeywordListEvents(subscription.filteredOutKeywords, cst.filteredOutKeywordsId);
+        topicManager.setUpFilteringListEvents();
     }, true);
 
     // Reset titles array when changing page
-    NodeCreationObserver.onCreation(".feedUnreadCountHint, .categoryUnreadCountHint", function(){topicManager.resetSorting()});
+    NodeCreationObserver.onCreation(".feedUnreadCountHint, .categoryUnreadCountHint", tmBind(topicManager.resetSorting));
 
     // New topics listener
-    NodeCreationObserver.onCreation(cst.topicSelector, function(){topicManager.refreshTopic($(this))});
+    NodeCreationObserver.onCreation(cst.topicSelector, tmBind(topicManager.refreshTopic));
 
 });

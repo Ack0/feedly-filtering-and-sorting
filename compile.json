@@ -1,10 +1,10 @@
 {
     "files": [
         "Constants",
+        "Utils",
         "Subscription",
         "TopicManager",
         "DAO",
-        "Utils",
         "Main"
     ]
 }

@@ -42,12 +42,24 @@ module.exports = function(grunt) {
                             replacement: ''
                         },
                         {
-                            pattern: /\s*exports\.[^=]*=[^;]*;/ig,
+                            pattern: /\s*exports\.[^=|;]*=[^;{]*;/ig,
                             replacement: ''
                         },
                         {
                             pattern: /= new[^\.]*\./ig,
                             replacement: '= new '
+                        },
+                        {
+                            pattern: /Utils_[0-9]+\./ig,
+                            replacement: ''
+                        },
+                        {
+                            pattern: /Subscription_[0-9]+\./ig,
+                            replacement: ''
+                        },
+                        {
+                            pattern: /exports\./g,
+                            replacement: 'exported.'
                         }
                     ]
                 }

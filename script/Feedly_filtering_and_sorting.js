@@ -30,8 +30,6 @@ var cst = {
     "settingsDivSpanStyle": "style='display: inline; vertical-align: middle;'",
     "profileNameId": "profileName",
     "profileListId": "profileList",
-    "restrictedOnKeywordsId": "restrictedOnKeywords",
-    "filteredOutKeywordsId": "filteredOutKeywords",
     "filteringEnabledId": "filteringEnabled",
     "restrictingEnabledId": "restrictingEnabled",
     "sortingEnabledId": "sortingEnabled",
@@ -39,29 +37,77 @@ var cst = {
     "toggleSrcAttr": "toggle-src"
 };
 
+var exported = {};
+function callbackBind(thisArg) {
+    return (function (callback) {
+        return callback.bind(this);
+    }).bind(thisArg);
+}
+function $id(id) {
+    return $('#' + id);
+}
+function insertIndex(element, i) {
+    // The elemen0t we want to swap with
+    var $target = element.parent().children().eq(i);
+    // Determine the direction of the appended index so we know what side to place it on
+    if (element.index() > i) {
+        $target.before(element);
+    }
+    else {
+        $target.after(element);
+    }
+}
+
+(function (FilteringType) {
+    FilteringType[FilteringType["RestrictedOn"] = 0] = "RestrictedOn";
+    FilteringType[FilteringType["FilteredOut"] = 1] = "FilteredOut";
+})(exported.FilteringType || (exported.FilteringType = {}));
+var FilteringType = exported.FilteringType;
+var FilteringTypeIds = (function () {
+    function FilteringTypeIds() {
+    }
+    return FilteringTypeIds;
+}());
 var Subscription = (function () {
     function Subscription(path) {
+        this.filteringIdsByType = {};
+        this.filteringListsByType = {};
         this.dao = new DAO(path);
-        this.restrictedOnKeywords = this.dao.deserialize(cst.restrictedOnKeywordsId, []);
-        this.filteredOutKeywords = this.dao.deserialize(cst.filteredOutKeywordsId, []);
         this.filteringEnabled = this.dao.getValue(cst.filteringEnabledId, false);
         this.restrictingEnabled = this.dao.getValue(cst.restrictingEnabledId, false);
         this.sortingEnabled = this.dao.getValue(cst.sortingEnabledId, false);
         this.sortingType = this.dao.getValue(cst.sortingTypeId, 'nbRecommendationsDesc');
-        this.keywords = {};
-        this.keywords[cst.restrictedOnKeywordsId] = {
-            list: this.restrictedOnKeywords,
+        this.filteringIdsByType[FilteringType.RestrictedOn] = {
+            typeId: "restrictedOnKeywords",
             plusBtnId: "AddRestrictedOnKeyword",
             eraseBtnId: "DeleteAllRestrictedOnKeyword"
         };
-        this.keywords[cst.filteredOutKeywordsId] = {
-            list: this.filteredOutKeywords,
+        this.filteringIdsByType[FilteringType.FilteredOut] = {
+            typeId: "filteredOutKeywords",
             plusBtnId: "AddFilteredOutKeyword",
             eraseBtnId: "DeleteAllFilteredOutKeyword"
         };
+        this.forEachFilteringType(function (type) {
+            var ids = this.filteringIdsByType[type];
+            this.filteringListsByType[type] = this.dao.deserialize(ids.typeId, []);
+        }, this);
     }
     Subscription.prototype.getDAO = function () {
         return this.dao;
+    };
+    Subscription.prototype.getFilteringList = function (type) {
+        return this.filteringListsByType[type];
+    };
+    Subscription.prototype.getIds = function (type) {
+        return this.filteringIdsByType[type];
+    };
+    Subscription.prototype.forEachFilteringType = function (callback, thisArg) {
+        Object.keys(this.filteringIdsByType).forEach(function (type) {
+            callback.call(thisArg, type);
+        });
+    };
+    Subscription.prototype.save = function (type) {
+        this.dao.serialize(this.getIds(type).typeId, this.getFilteringList(type));
     };
     return Subscription;
 }());
@@ -76,64 +122,65 @@ var TopicManager = (function () {
         this.titles = [];
         this.nbrRecommendationsArray = [];
     };
-    TopicManager.prototype.refreshKeywordList = function (keywordList, keywordListId) {
-        var keywordListHtml = this.getKeywordList(keywordList, keywordListId);
-        this.$id(keywordListId).replaceWith(keywordListHtml);
+    TopicManager.prototype.refreshFilteringList = function (type) {
+        var keywordListHtml = this.filteringListHTML(type);
+        var keywordListId = this.subscription.getIds(type).typeId;
+        $id(keywordListId).replaceWith(keywordListHtml);
         this.refreshTopics();
-        this.subscription.getDAO().serialize(keywordListId, keywordList);
-        this.setKeywordListEvents(keywordList, keywordListId);
-    };
-    TopicManager.prototype.$id = function (id) {
-        return $('#' + id);
+        this.subscription.save(type);
+        this.setUpFilteringListEvents();
     };
     TopicManager.prototype.getId = function (keywordListId, keyword) {
         return keywordListId + "_" + keyword;
     };
-    TopicManager.prototype.getKeywordList = function (keywordList, keywordListId) {
-        var result = "<span id=" + keywordListId + ">";
+    TopicManager.prototype.filteringListHTML = function (type) {
+        var ids = this.subscription.getIds(type);
+        var filteringList = this.subscription.getFilteringList(type);
+        var result = "<span id=" + ids.typeId + ">";
         // keyword list
-        for (var i = 0; i < keywordList.length; i++) {
-            var keyword = keywordList[i];
-            var keywordId = this.getId(keywordListId, keyword);
+        for (var i = 0; i < filteringList.length; i++) {
+            var keyword = filteringList[i];
+            var keywordId = this.getId(ids.typeId, keyword);
             result += '<button id="' + keywordId + '" type="button" style="' + cst.keywordTagStyle + '">' + keyword + '</button>';
         }
         // plus button
-        var plusBtnId = this.subscription.keywords[keywordListId].plusBtnId;
-        result += '<span id="' + plusBtnId + '" > <img src="' + cst.plusIconLink + '" style="' + cst.iconStyle + '" /></span>';
+        result += '<span id="' + ids.plusBtnId + '" > <img src="' + cst.plusIconLink + '" style="' + cst.iconStyle + '" /></span>';
         // Erase button
-        var eraseBtnId = this.subscription.keywords[keywordListId].eraseBtnId;
-        result += '<span id="' + eraseBtnId + '" > <img src="' + cst.eraseIconLink + '" style="' + cst.iconStyle + '" /></span>';
+        result += '<span id="' + ids.eraseBtnId + '" > <img src="' + cst.eraseIconLink + '" style="' + cst.iconStyle + '" /></span>';
         result += "</span>";
         return result;
     };
-    TopicManager.prototype.setKeywordListEvents = function (keywordList, keywordListId) {
-        // Plus button event
-        var plusBtnId = this.subscription.keywords[keywordListId].plusBtnId;
-        this.$id(plusBtnId).click(function () {
+    TopicManager.prototype.setUpFilteringListEvents = function () {
+        this.subscription.forEachFilteringType(this.setUpFilteringListTypeEvents, this);
+    };
+    TopicManager.prototype.setUpFilteringListTypeEvents = function (type) {
+        var ids = this.subscription.getIds(type);
+        var keywordList = this.subscription.getFilteringList(type);
+        var refreshKeywordList = this.refreshFilteringList.bind(this);
+        $id(ids.plusBtnId).click(function () {
             var keyword = prompt("Add keyword", "");
             if (keyword !== null) {
                 keywordList.push(keyword);
-                this.refreshKeywordList(keywordList, keywordListId);
+                refreshKeywordList(type);
             }
         });
         // Erase button event
-        var eraseBtnId = this.subscription.keywords[keywordListId].eraseBtnId;
-        this.$id(eraseBtnId).click(function () {
+        $id(ids.eraseBtnId).click((function () {
             if (confirm("Erase all the keyword of this list ?")) {
-                this.keywords[keywordListId].list.length = 0;
-                this.refreshKeywordList(keywordList, keywordListId);
+                keywordList.length = 0;
+                refreshKeywordList(type);
             }
-        });
+        }).bind(this));
         // Keyword buttons events
         for (var i = 0; i < keywordList.length; i++) {
-            var keywordId = this.getId(keywordListId, keywordList[i]);
-            this.$id(keywordId).click(function () {
+            var keywordId = this.getId(ids.typeId, keywordList[i]);
+            $id(keywordId).click(function () {
                 var keyword = $(this).text();
                 if (confirm("Delete the keyword ?")) {
                     var index = keywordList.indexOf(keyword);
                     if (index > -1) {
                         keywordList.splice(index, 1);
-                        this.refreshKeywordList(keywordList, keywordListId);
+                        refreshKeywordList(type);
                     }
                 }
             });
@@ -141,26 +188,27 @@ var TopicManager = (function () {
     };
     TopicManager.prototype.refreshTopics = function () {
         this.resetSorting();
-        $(cst.topicSelector).each(function () {
-            this.refreshTopic($(this));
-        });
+        $(cst.topicSelector).toArray().forEach(this.refreshTopic, this);
     };
-    TopicManager.prototype.refreshTopic = function (topic) {
+    TopicManager.prototype.refreshTopic = function (topicNode) {
+        var topic = $(topicNode);
         var title = topic.attr(cst.topicTitleAttribute).toLowerCase();
         if (this.subscription.filteringEnabled || this.subscription.restrictingEnabled) {
+            var restrictedOnKeywords = this.subscription.getFilteringList(FilteringType.RestrictedOn);
+            var filteredOutKeywords = this.subscription.getFilteringList(FilteringType.FilteredOut);
             var keep = false;
-            var restrictedCount = this.subscription.restrictedOnKeywords.length;
+            var restrictedCount = restrictedOnKeywords.length;
             if (this.subscription.restrictingEnabled && restrictedCount > 0) {
                 keep = true;
                 for (var i = 0; i < restrictedCount && keep; i++) {
-                    if (title.indexOf(this.subscription.restrictedOnKeywords[i].toLowerCase()) != -1) {
+                    if (title.indexOf(restrictedOnKeywords[i].toLowerCase()) != -1) {
                         keep = false;
                     }
                 }
             }
             if (this.subscription.filteringEnabled) {
-                for (var i = 0; i < this.subscription.filteredOutKeywords.length && !keep; i++) {
-                    if (title.indexOf(this.subscription.filteredOutKeywords[i].toLowerCase()) != -1) {
+                for (var i = 0; i < filteredOutKeywords.length && !keep; i++) {
+                    if (title.indexOf(filteredOutKeywords[i].toLowerCase()) != -1) {
                         keep = true;
                     }
                 }
@@ -188,7 +236,7 @@ var TopicManager = (function () {
                 this.titles.reverse();
             }
             var index = jQuery.inArray(title, this.titles);
-            topic.insertIndex(index);
+            insertIndex(topic, index);
         }
         else if (this.subscription.sortingType == 'nbRecommendationsAsc' || this.subscription.sortingType == 'nbRecommendationsDesc') {
             var nbrRecommendationsStr = topic.find(cst.nbrRecommendationsSelector).text().trim();
@@ -207,7 +255,7 @@ var TopicManager = (function () {
                 return (b - a) * i;
             });
             index = this.nbrRecommendationsArray.lastIndexOf(nbrRecommendations);
-            topic.insertIndex(index);
+            insertIndex(topic, index);
         }
     };
     return TopicManager;
@@ -238,33 +286,9 @@ var DAO = (function () {
     return DAO;
 }());
 
-var CallbackFactory = (function () {
-    function CallbackFactory(owner) {
-        this.owner = owner;
-    }
-    CallbackFactory.prototype.get = function (method) {
-        return function () {
-            method.apply(this.owner, $(this));
-        };
-    };
-    return CallbackFactory;
-}());
-
 var subscription = new Subscription("");
 var topicManager = new TopicManager(subscription);
-var topicCF = new CallbackFactory(topicManager);
-$.fn.insertIndex = function (i) {
-    // The element we want to swap with
-    var $target = this.parent().children().eq(i);
-    // Determine the direction of the appended index so we know what side to place it on
-    if (this.index() > i) {
-        $target.before(this);
-    }
-    else {
-        $target.after(this);
-    }
-    return this;
-};
+var tmBind = callbackBind(topicManager);
 $(document).ready(function () {
     var enableFilteringCheckId = "enableFiltering";
     var enableRestrictingCheckId = "enableRestricting";
@@ -302,23 +326,23 @@ $(document).ready(function () {
             // Restricted on keyword list
             '<div>' +
             '<span ' + cst.settingsDivSpanStyle + '>Restricted on keyword list: </span>' +
-            topicManager.getKeywordList(subscription.restrictedOnKeywords, cst.restrictedOnKeywordsId) +
+            topicManager.filteringListHTML(FilteringType.RestrictedOn) +
             '</div>' +
             // Filtered out keyword list
             '<div>' +
             '<span ' + cst.settingsDivSpanStyle + '>Filtered out keyword list: </span>' +
-            topicManager.getKeywordList(subscription.filteredOutKeywords, cst.filteredOutKeywordsId) +
+            topicManager.filteringListHTML(FilteringType.FilteredOut) +
             '</div>' +
             '</div>';
         $(this).after(settingsDiv);
         // Set checkbox & select boxes correct state
-        var filteringCheck = topicManager.$id(enableFilteringCheckId);
+        var filteringCheck = $id(enableFilteringCheckId);
         filteringCheck.prop('checked', subscription.filteringEnabled);
-        var restrictingCheck = topicManager.$id(enableRestrictingCheckId);
+        var restrictingCheck = $id(enableRestrictingCheckId);
         restrictingCheck.prop('checked', subscription.restrictingEnabled);
-        var sortingCheck = topicManager.$id(cst.sortingEnabledId);
+        var sortingCheck = $id(cst.sortingEnabledId);
         sortingCheck.prop('checked', subscription.sortingEnabled);
-        var sortingTypeSelect = topicManager.$id(cst.sortingTypeId);
+        var sortingTypeSelect = $id(cst.sortingTypeId);
         sortingTypeSelect.val(subscription.sortingType);
         var dao = subscription.getDAO();
         // Checkbox & select boxes events
@@ -343,26 +367,25 @@ $(document).ready(function () {
             topicManager.refreshTopics();
         });
         // Setting button events
-        topicManager.$id(settingsBtnId).click(function () {
+        $id(settingsBtnId).click(function () {
             var _this = $(this);
             var current = _this.attr("src");
             var swap = _this.attr(cst.toggleSrcAttr);
             _this.attr('src', swap).attr(cst.toggleSrcAttr, current);
-            topicManager.$id(settingsDivId).toggle();
+            $id(settingsDivId).toggle();
         });
         // Settings Div Style
-        topicManager.$id(settingsDivId).css("display", "none")
+        $id(settingsDivId).css("display", "none")
             .css('margin', '25px')
             .css('border-radius', '25px')
             .css('border', '2px solid #336699')
             .css('background', '#E0F5FF')
             .css('padding', '20px');
         // Events on keyword lists
-        topicManager.setKeywordListEvents(subscription.restrictedOnKeywords, cst.restrictedOnKeywordsId);
-        topicManager.setKeywordListEvents(subscription.filteredOutKeywords, cst.filteredOutKeywordsId);
+        topicManager.setUpFilteringListEvents();
     }, true);
     // Reset titles array when changing page
-    NodeCreationObserver.onCreation(".feedUnreadCountHint, .categoryUnreadCountHint", function () { topicManager.resetSorting(); });
+    NodeCreationObserver.onCreation(".feedUnreadCountHint, .categoryUnreadCountHint", tmBind(topicManager.resetSorting));
     // New topics listener
-    NodeCreationObserver.onCreation(cst.topicSelector, function () { topicManager.refreshTopic($(this)); });
+    NodeCreationObserver.onCreation(cst.topicSelector, tmBind(topicManager.refreshTopic));
 });
