@@ -6,6 +6,7 @@ import * as NodeCreationObserver from "node-creation-observer";
 import {TopicManager} from "./TopicManager";
 import {Subscription} from "./Subscription";
 import {FilteringType} from "./Subscription";
+import {SortingType} from "./Subscription";
 import {callbackBind} from "./Utils";
 import {$id} from "./Utils";
 import {DAO} from "./DAO";
@@ -48,10 +49,10 @@ $(document).ready(function() {
             '<span ' + cst.settingsDivSpanStyle + '>Sorting enabled</span>' +
             '<input id="' + cst.sortingEnabledId + '" type="checkbox" style="vertical-align: middle;">' +
             '<select id=' + cst.sortingTypeId + '>' +
-            '<option value="nbRecommendationsDesc">Sort by number of recommendations (highest to lowest)</option>' +
-            '<option value="titleAsc">Sort by title (a -> z)</option>' +
-            '<option value="nbRecommendationsAsc">Sort by number of recommendations (lowest to highest)</option>' +
-            '<option value="titleDesc">Sort by title (z -> a)</option>' +
+            '<option value="' + SortingType.PopularityDesc + '">Sort by number of recommendations (highest to lowest)</option>' +
+            '<option value="' + SortingType.TitleAsc + '">Sort by title (a -> z)</option>' +
+            '<option value="' + SortingType.PopularityAsc + '">Sort by number of recommendations (lowest to highest)</option>' +
+            '<option value="' + SortingType.TitleDesc + '">Sort by title (z -> a)</option>' +
             '</select>' +
             '</div>' +
 

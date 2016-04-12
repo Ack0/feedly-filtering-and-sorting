@@ -63,6 +63,13 @@ function insertIndex(element, i) {
     FilteringType[FilteringType["FilteredOut"] = 1] = "FilteredOut";
 })(exported.FilteringType || (exported.FilteringType = {}));
 var FilteringType = exported.FilteringType;
+(function (SortingType) {
+    SortingType[SortingType["PopularityDesc"] = 0] = "PopularityDesc";
+    SortingType[SortingType["PopularityAsc"] = 1] = "PopularityAsc";
+    SortingType[SortingType["TitleDesc"] = 2] = "TitleDesc";
+    SortingType[SortingType["TitleAsc"] = 3] = "TitleAsc";
+})(exported.SortingType || (exported.SortingType = {}));
+var SortingType = exported.SortingType;
 var FilteringTypeIds = (function () {
     function FilteringTypeIds() {
     }
@@ -76,7 +83,7 @@ var Subscription = (function () {
         this.filteringEnabled = this.dao.getValue(cst.filteringEnabledId, false);
         this.restrictingEnabled = this.dao.getValue(cst.restrictingEnabledId, false);
         this.sortingEnabled = this.dao.getValue(cst.sortingEnabledId, false);
-        this.sortingType = this.dao.getValue(cst.sortingTypeId, 'nbRecommendationsDesc');
+        this.sortingType = this.dao.getValue(cst.sortingTypeId, SortingType.PopularityDesc);
         this.filteringIdsByType[FilteringType.RestrictedOn] = {
             typeId: "restrictedOnKeywords",
             plusBtnId: "AddRestrictedOnKeyword",
@@ -156,7 +163,8 @@ var TopicManager = (function () {
     TopicManager.prototype.setUpFilteringListTypeEvents = function (type) {
         var ids = this.subscription.getIds(type);
         var keywordList = this.subscription.getFilteringList(type);
-        var refreshKeywordList = this.refreshFilteringList.bind(this);
+        var refreshKeywordList = this.refreshFilteringList;
+        refreshKeywordList.bind(this);
         $id(ids.plusBtnId).click(function () {
             var keyword = prompt("Add keyword", "");
             if (keyword !== null) {
@@ -165,12 +173,12 @@ var TopicManager = (function () {
             }
         });
         // Erase button event
-        $id(ids.eraseBtnId).click((function () {
+        $id(ids.eraseBtnId).click(function () {
             if (confirm("Erase all the keyword of this list ?")) {
                 keywordList.length = 0;
                 refreshKeywordList(type);
             }
-        }).bind(this));
+        });
         // Keyword buttons events
         for (var i = 0; i < keywordList.length; i++) {
             var keywordId = this.getId(ids.typeId, keywordList[i]);
@@ -228,17 +236,18 @@ var TopicManager = (function () {
         }
     };
     TopicManager.prototype.sortTopic = function (topic) {
-        if (this.subscription.sortingType == 'titleAsc' || this.subscription.sortingType == 'titleDesc') {
+        var sortingType = this.subscription.sortingType;
+        if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
             var title = topic.attr(cst.topicTitleAttribute).toLowerCase();
             this.titles.push(title);
             this.titles.sort();
-            if (this.subscription.sortingType == 'titleDesc') {
+            if (sortingType == SortingType.TitleDesc) {
                 this.titles.reverse();
             }
             var index = jQuery.inArray(title, this.titles);
             insertIndex(topic, index);
         }
-        else if (this.subscription.sortingType == 'nbRecommendationsAsc' || this.subscription.sortingType == 'nbRecommendationsDesc') {
+        else if (sortingType == SortingType.PopularityAsc || sortingType == SortingType.PopularityDesc) {
             var nbrRecommendationsStr = topic.find(cst.nbrRecommendationsSelector).text().trim();
             nbrRecommendationsStr = nbrRecommendationsStr.replace("+", "");
             if (nbrRecommendationsStr.indexOf("K") > -1) {
@@ -251,7 +260,7 @@ var TopicManager = (function () {
             }
             this.nbrRecommendationsArray.push(nbrRecommendations);
             this.nbrRecommendationsArray.sort(function (a, b) {
-                var i = (this.subscription.sortingType == 'nbRecommendationsAsc' ? -1 : 1);
+                var i = ((sortingType == SortingType.PopularityAsc) ? -1 : 1);
                 return (b - a) * i;
             });
             index = this.nbrRecommendationsArray.lastIndexOf(nbrRecommendations);
@@ -317,10 +326,10 @@ $(document).ready(function () {
             '<span ' + cst.settingsDivSpanStyle + '>Sorting enabled</span>' +
             '<input id="' + cst.sortingEnabledId + '" type="checkbox" style="vertical-align: middle;">' +
             '<select id=' + cst.sortingTypeId + '>' +
-            '<option value="nbRecommendationsDesc">Sort by number of recommendations (highest to lowest)</option>' +
-            '<option value="titleAsc">Sort by title (a -> z)</option>' +
-            '<option value="nbRecommendationsAsc">Sort by number of recommendations (lowest to highest)</option>' +
-            '<option value="titleDesc">Sort by title (z -> a)</option>' +
+            '<option value="' + SortingType.PopularityDesc + '">Sort by number of recommendations (highest to lowest)</option>' +
+            '<option value="' + SortingType.TitleAsc + '">Sort by title (a -> z)</option>' +
+            '<option value="' + SortingType.PopularityAsc + '">Sort by number of recommendations (lowest to highest)</option>' +
+            '<option value="' + SortingType.TitleDesc + '">Sort by title (z -> a)</option>' +
             '</select>' +
             '</div>' +
             // Restricted on keyword list

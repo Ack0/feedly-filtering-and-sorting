@@ -9,6 +9,13 @@ export enum FilteringType {
     FilteredOut
 }
 
+export enum SortingType {
+    PopularityDesc,
+    PopularityAsc,
+    TitleDesc,
+    TitleAsc
+}
+
 export class FilteringTypeIds {
     typeId: string;
     plusBtnId: string;
@@ -19,7 +26,7 @@ export class Subscription {
     filteringEnabled: boolean;
     restrictingEnabled: boolean;
     sortingEnabled: boolean;
-    sortingType: string;
+    sortingType: SortingType;
     filteringIdsByType: { [key: number]: FilteringTypeIds; } = {};
     filteringListsByType: { [key: number]: string[]; } = {};
     dao: DAO;
@@ -29,7 +36,7 @@ export class Subscription {
         this.filteringEnabled = this.dao.getValue(cst.filteringEnabledId, false);
         this.restrictingEnabled = this.dao.getValue(cst.restrictingEnabledId, false);
         this.sortingEnabled = this.dao.getValue(cst.sortingEnabledId, false);
-        this.sortingType = this.dao.getValue(cst.sortingTypeId, 'nbRecommendationsDesc');
+        this.sortingType = this.dao.getValue(cst.sortingTypeId, SortingType.PopularityDesc);
 
         this.filteringIdsByType[FilteringType.RestrictedOn] = {
             typeId: "restrictedOnKeywords",
