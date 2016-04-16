@@ -23,12 +23,12 @@ export class FilteringTypeIds {
 }
 
 export class Subscription {
-    filteringEnabled: boolean;
-    restrictingEnabled: boolean;
-    sortingEnabled: boolean;
-    sortingType: SortingType;
-    filteringIdsByType: { [key: number]: FilteringTypeIds; } = {};
-    filteringListsByType: { [key: number]: string[]; } = {};
+    private filteringEnabled: boolean;
+    private restrictingEnabled: boolean;
+    private sortingEnabled: boolean;
+    private sortingType: SortingType;
+    private filteringIdsByType: { [key: number]: FilteringTypeIds; } = {};
+    private filteringListsByType: { [key: number]: string[]; } = {};
     dao: DAO;
 
     constructor(path: string) {
@@ -54,9 +54,34 @@ export class Subscription {
             this.filteringListsByType[type] = this.dao.deserialize(ids.typeId, []);
         }, this);
     }
-
-    getDAO() {
-        return this.dao;
+    
+    isFilteringEnabled() : boolean {
+        return this.filteringEnabled;
+    }
+    setFilteringEnabled(filteringEnabled: boolean) {
+        this.filteringEnabled = filteringEnabled;
+        this.dao.setValue(cst.filteringEnabledId, this.filteringEnabled);
+    }
+    isRestrictingEnabled() : boolean {
+        return this.restrictingEnabled;
+    }
+    setRestrictingEnabled(restrictingEnabled: boolean) {
+        this.restrictingEnabled = restrictingEnabled;
+        this.dao.setValue(cst.restrictingEnabledId, this.restrictingEnabled);            
+    }
+    isSortingEnabled() : boolean {
+        return this.sortingEnabled;
+    }
+    setSortingEnabled(sortingEnabled: boolean) {
+        this.sortingEnabled = sortingEnabled;
+        this.dao.setValue(cst.sortingEnabledId, this.sortingEnabled);
+    }
+    getSortingType() : SortingType {
+        return this.sortingType;
+    }
+    setSortingType(sortingType: SortingType) {
+        this.sortingType = sortingType;
+        this.dao.setValue(cst.sortingTypeId, this.sortingType);
     }
 
     getFilteringList(type: FilteringType): string[] {

@@ -99,8 +99,33 @@ var Subscription = (function () {
             this.filteringListsByType[type] = this.dao.deserialize(ids.typeId, []);
         }, this);
     }
-    Subscription.prototype.getDAO = function () {
-        return this.dao;
+    Subscription.prototype.isFilteringEnabled = function () {
+        return this.filteringEnabled;
+    };
+    Subscription.prototype.setFilteringEnabled = function (filteringEnabled) {
+        this.filteringEnabled = filteringEnabled;
+        this.dao.setValue(cst.filteringEnabledId, this.filteringEnabled);
+    };
+    Subscription.prototype.isRestrictingEnabled = function () {
+        return this.restrictingEnabled;
+    };
+    Subscription.prototype.setRestrictingEnabled = function (restrictingEnabled) {
+        this.restrictingEnabled = restrictingEnabled;
+        this.dao.setValue(cst.restrictingEnabledId, this.restrictingEnabled);
+    };
+    Subscription.prototype.isSortingEnabled = function () {
+        return this.sortingEnabled;
+    };
+    Subscription.prototype.setSortingEnabled = function (sortingEnabled) {
+        this.sortingEnabled = sortingEnabled;
+        this.dao.setValue(cst.sortingEnabledId, this.sortingEnabled);
+    };
+    Subscription.prototype.getSortingType = function () {
+        return this.sortingType;
+    };
+    Subscription.prototype.setSortingType = function (sortingType) {
+        this.sortingType = sortingType;
+        this.dao.setValue(cst.sortingTypeId, this.sortingType);
     };
     Subscription.prototype.getFilteringList = function (type) {
         return this.filteringListsByType[type];
@@ -120,93 +145,26 @@ var Subscription = (function () {
 }());
 
 var TopicManager = (function () {
-    function TopicManager(subscription) {
+    function TopicManager() {
         this.titles = [];
         this.nbrRecommendationsArray = [];
-        this.subscription = subscription;
     }
+    TopicManager.prototype.setSubscription = function (subscription) {
+        this.subscription = subscription;
+    };
     TopicManager.prototype.resetSorting = function () {
         this.titles = [];
         this.nbrRecommendationsArray = [];
     };
-    TopicManager.prototype.refreshFilteringList = function (type) {
-        var keywordListHtml = this.filteringListHTML(type);
-        var keywordListId = this.subscription.getIds(type).typeId;
-        $id(keywordListId).replaceWith(keywordListHtml);
-        this.refreshTopics();
-        this.subscription.save(type);
-        this.setUpFilteringListEvents();
-    };
-    TopicManager.prototype.getId = function (keywordListId, keyword) {
-        return keywordListId + "_" + keyword;
-    };
-    TopicManager.prototype.filteringListHTML = function (type) {
-        var ids = this.subscription.getIds(type);
-        var filteringList = this.subscription.getFilteringList(type);
-        var result = "<span id=" + ids.typeId + ">";
-        // keyword list
-        for (var i = 0; i < filteringList.length; i++) {
-            var keyword = filteringList[i];
-            var keywordId = this.getId(ids.typeId, keyword);
-            result += '<button id="' + keywordId + '" type="button" style="' + cst.keywordTagStyle + '">' + keyword + '</button>';
-        }
-        // plus button
-        result += '<span id="' + ids.plusBtnId + '" > <img src="' + cst.plusIconLink + '" style="' + cst.iconStyle + '" /></span>';
-        // Erase button
-        result += '<span id="' + ids.eraseBtnId + '" > <img src="' + cst.eraseIconLink + '" style="' + cst.iconStyle + '" /></span>';
-        result += "</span>";
-        return result;
-    };
-    TopicManager.prototype.setUpFilteringListEvents = function () {
-        this.subscription.forEachFilteringType(this.setUpFilteringListTypeEvents, this);
-    };
-    TopicManager.prototype.setUpFilteringListTypeEvents = function (type) {
-        var ids = this.subscription.getIds(type);
-        var keywordList = this.subscription.getFilteringList(type);
-        var refreshKeywordList = this.refreshFilteringList;
-        refreshKeywordList.bind(this);
-        $id(ids.plusBtnId).click(function () {
-            var keyword = prompt("Add keyword", "");
-            if (keyword !== null) {
-                keywordList.push(keyword);
-                refreshKeywordList(type);
-            }
-        });
-        // Erase button event
-        $id(ids.eraseBtnId).click(function () {
-            if (confirm("Erase all the keyword of this list ?")) {
-                keywordList.length = 0;
-                refreshKeywordList(type);
-            }
-        });
-        // Keyword buttons events
-        for (var i = 0; i < keywordList.length; i++) {
-            var keywordId = this.getId(ids.typeId, keywordList[i]);
-            $id(keywordId).click(function () {
-                var keyword = $(this).text();
-                if (confirm("Delete the keyword ?")) {
-                    var index = keywordList.indexOf(keyword);
-                    if (index > -1) {
-                        keywordList.splice(index, 1);
-                        refreshKeywordList(type);
-                    }
-                }
-            });
-        }
-    };
-    TopicManager.prototype.refreshTopics = function () {
-        this.resetSorting();
-        $(cst.topicSelector).toArray().forEach(this.refreshTopic, this);
-    };
     TopicManager.prototype.refreshTopic = function (topicNode) {
         var topic = $(topicNode);
         var title = topic.attr(cst.topicTitleAttribute).toLowerCase();
-        if (this.subscription.filteringEnabled || this.subscription.restrictingEnabled) {
+        if (this.subscription.isFilteringEnabled() || this.subscription.isRestrictingEnabled()) {
             var restrictedOnKeywords = this.subscription.getFilteringList(FilteringType.RestrictedOn);
             var filteredOutKeywords = this.subscription.getFilteringList(FilteringType.FilteredOut);
             var keep = false;
             var restrictedCount = restrictedOnKeywords.length;
-            if (this.subscription.restrictingEnabled && restrictedCount > 0) {
+            if (this.subscription.isRestrictingEnabled() && restrictedCount > 0) {
                 keep = true;
                 for (var i = 0; i < restrictedCount && keep; i++) {
                     if (title.indexOf(restrictedOnKeywords[i].toLowerCase()) != -1) {
@@ -214,7 +172,7 @@ var TopicManager = (function () {
                     }
                 }
             }
-            if (this.subscription.filteringEnabled) {
+            if (this.subscription.isFilteringEnabled()) {
                 for (var i = 0; i < filteredOutKeywords.length && !keep; i++) {
                     if (title.indexOf(filteredOutKeywords[i].toLowerCase()) != -1) {
                         keep = true;
@@ -231,12 +189,12 @@ var TopicManager = (function () {
         else {
             topic.css("display", "");
         }
-        if (this.subscription.sortingEnabled) {
+        if (this.subscription.isSortingEnabled()) {
             this.sortTopic(topic);
         }
     };
     TopicManager.prototype.sortTopic = function (topic) {
-        var sortingType = this.subscription.sortingType;
+        var sortingType = this.subscription.getSortingType();
         if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
             var title = topic.attr(cst.topicTitleAttribute).toLowerCase();
             this.titles.push(title);
@@ -295,31 +253,42 @@ var DAO = (function () {
     return DAO;
 }());
 
-var subscription = new Subscription("");
-var topicManager = new TopicManager(subscription);
-var tmBind = callbackBind(topicManager);
-$(document).ready(function () {
-    var enableFilteringCheckId = "enableFiltering";
-    var enableRestrictingCheckId = "enableRestricting";
-    var settingsDivId = "settingsDiv";
-    var settingsBtnId = "settingsBtn";
-    // Adding filtering configuration
-    NodeCreationObserver.onCreation(cst.settingsDivPredecessorSelector, function () {
-        console.log("Feedly page fully loaded");
-        // Settings Button
-        var settingsBtn = '<img id="' + settingsBtnId + '" class="pageAction requiresLogin" style="display: inline; width: 24px; height: 24px;" src="' + cst.filterIconLink + '" ' + cst.toggleSrcAttr + '="' + cst.closeIconLink + '" alt="icon"/>';
+var UIManager = (function () {
+    function UIManager() {
+        this.topicManager = new TopicManager();
+        this.settingsBtnId = "settingsBtn";
+        this.settingsDivId = "settingsDiv";
+        this.enableFilteringCheckId = "enableFiltering";
+        this.enableRestrictingCheckId = "enableRestricting";
+    }
+    UIManager.prototype.setSubscription = function (subscription) {
+        this.subscription = subscription;
+        this.topicManager.setSubscription(subscription);
+    };
+    UIManager.prototype.setUpSettingsMenu = function (settingsDivPredecessor) {
+        var settingsDiv = this.getSettingsMenuHTML();
+        var settingsBtn = this.getSettingsBtnHTML();
+        $(settingsDivPredecessor).after(settingsDiv);
         $(cst.settingsBtnPredecessorSelector).after(settingsBtn);
-        // Settings Div
-        var settingsDiv = '<div id="' + settingsDivId + '" >' +
+        $id(this.settingsDivId).css("display", "none")
+            .css('margin', '25px')
+            .css('border-radius', '25px')
+            .css('border', '2px solid #336699')
+            .css('background', '#E0F5FF')
+            .css('padding', '20px');
+        this.setUpSettingsMenuEvents();
+    };
+    UIManager.prototype.getSettingsMenuHTML = function () {
+        var settingsDiv = '<div id="' + this.settingsDivId + '" >' +
             // Checkbox to enable filtering
             '<div>' +
             '<span ' + cst.settingsDivSpanStyle + '>Filtering enabled</span>' +
-            '<input id="' + enableFilteringCheckId + '" type="checkbox" style="vertical-align: middle;">' +
+            '<input id="' + this.enableFilteringCheckId + '" type="checkbox" style="vertical-align: middle;">' +
             '</div>' +
             // Checkbox to enable restricting
             '<div>' +
             '<span ' + cst.settingsDivSpanStyle + '>Restricting enabled</span>' +
-            '<input id="' + enableRestrictingCheckId + '" type="checkbox" style="vertical-align: middle;">' +
+            '<input id="' + this.enableRestrictingCheckId + '" type="checkbox" style="vertical-align: middle;">' +
             '</div>' +
             // Checkbox to enable sorting
             '<div>' +
@@ -335,66 +304,147 @@ $(document).ready(function () {
             // Restricted on keyword list
             '<div>' +
             '<span ' + cst.settingsDivSpanStyle + '>Restricted on keyword list: </span>' +
-            topicManager.filteringListHTML(FilteringType.RestrictedOn) +
+            this.getFilteringListHTML(FilteringType.RestrictedOn) +
             '</div>' +
             // Filtered out keyword list
             '<div>' +
             '<span ' + cst.settingsDivSpanStyle + '>Filtered out keyword list: </span>' +
-            topicManager.filteringListHTML(FilteringType.FilteredOut) +
+            this.getFilteringListHTML(FilteringType.FilteredOut) +
             '</div>' +
             '</div>';
-        $(this).after(settingsDiv);
+        return settingsDiv;
+    };
+    UIManager.prototype.getFilteringListHTML = function (type) {
+        var ids = this.subscription.getIds(type);
+        var filteringList = this.subscription.getFilteringList(type);
+        var result = "<span id=" + ids.typeId + ">";
+        // keyword list
+        for (var i = 0; i < filteringList.length; i++) {
+            var keyword = filteringList[i];
+            var keywordId = this.getId(ids.typeId, keyword);
+            result += '<button id="' + keywordId + '" type="button" style="' + cst.keywordTagStyle + '">' + keyword + '</button>';
+        }
+        // plus button
+        result += '<span id="' + ids.plusBtnId + '" > <img src="' + cst.plusIconLink + '" style="' + cst.iconStyle + '" /></span>';
+        // Erase button
+        result += '<span id="' + ids.eraseBtnId + '" > <img src="' + cst.eraseIconLink + '" style="' + cst.iconStyle + '" /></span>';
+        result += "</span>";
+        return result;
+    };
+    UIManager.prototype.getSettingsBtnHTML = function () {
+        var settingsBtn = '<img id="' + this.settingsBtnId + '" class="pageAction requiresLogin" style="display: inline; width: 24px; height: 24px;" src="' + cst.filterIconLink + '" ' + cst.toggleSrcAttr + '="' + cst.closeIconLink + '" alt="icon"/>';
+        return settingsBtn;
+    };
+    UIManager.prototype.setUpSettingsMenuEvents = function () {
+        var t = this;
         // Set checkbox & select boxes correct state
-        var filteringCheck = $id(enableFilteringCheckId);
-        filteringCheck.prop('checked', subscription.filteringEnabled);
-        var restrictingCheck = $id(enableRestrictingCheckId);
-        restrictingCheck.prop('checked', subscription.restrictingEnabled);
+        var filteringCheck = $id(this.enableFilteringCheckId);
+        var restrictingCheck = $id(this.enableRestrictingCheckId);
         var sortingCheck = $id(cst.sortingEnabledId);
-        sortingCheck.prop('checked', subscription.sortingEnabled);
         var sortingTypeSelect = $id(cst.sortingTypeId);
-        sortingTypeSelect.val(subscription.sortingType);
-        var dao = subscription.getDAO();
+        filteringCheck.prop('checked', this.subscription.isFilteringEnabled());
+        restrictingCheck.prop('checked', this.subscription.isRestrictingEnabled());
+        sortingCheck.prop('checked', this.subscription.isSortingEnabled());
+        sortingTypeSelect.val(this.subscription.getSortingType());
         // Checkbox & select boxes events
         filteringCheck.change(function () {
-            subscription.filteringEnabled = $(this).is(':checked');
-            dao.setValue(cst.filteringEnabledId, subscription.filteringEnabled);
-            topicManager.refreshTopics();
+            t.subscription.setFilteringEnabled($(this).is(':checked'));
+            t.refreshTopics();
         });
         restrictingCheck.change(function () {
-            subscription.restrictingEnabled = $(this).is(':checked');
-            dao.setValue(cst.restrictingEnabledId, subscription.restrictingEnabled);
-            topicManager.refreshTopics();
+            t.subscription.setRestrictingEnabled($(this).is(':checked'));
+            t.refreshTopics();
         });
         sortingCheck.change(function () {
-            subscription.sortingEnabled = $(this).is(':checked');
-            dao.setValue(cst.sortingEnabledId, subscription.sortingEnabled);
-            topicManager.refreshTopics();
+            t.subscription.setSortingEnabled($(this).is(':checked'));
+            t.refreshTopics();
         });
         sortingTypeSelect.change(function () {
-            subscription.sortingType = sortingTypeSelect.val();
-            dao.setValue(cst.sortingTypeId, subscription.sortingType);
-            topicManager.refreshTopics();
+            t.subscription.setSortingType(sortingTypeSelect.val());
+            t.refreshTopics();
         });
         // Setting button events
-        $id(settingsBtnId).click(function () {
-            var _this = $(this);
-            var current = _this.attr("src");
-            var swap = _this.attr(cst.toggleSrcAttr);
-            _this.attr('src', swap).attr(cst.toggleSrcAttr, current);
-            $id(settingsDivId).toggle();
+        $id(this.settingsBtnId).click(function () {
+            var current = $(this).attr("src");
+            var swap = $(this).attr(cst.toggleSrcAttr);
+            $(this).attr('src', swap).attr(cst.toggleSrcAttr, current);
+            $id(t.settingsDivId).toggle();
         });
-        // Settings Div Style
-        $id(settingsDivId).css("display", "none")
-            .css('margin', '25px')
-            .css('border-radius', '25px')
-            .css('border', '2px solid #336699')
-            .css('background', '#E0F5FF')
-            .css('padding', '20px');
-        // Events on keyword lists
-        topicManager.setUpFilteringListEvents();
+        this.setUpFilteringListEvents();
+    };
+    UIManager.prototype.refreshFilteringList = function (type) {
+        var keywordListHtml = this.getFilteringListHTML(type);
+        var keywordListId = this.subscription.getIds(type).typeId;
+        $id(keywordListId).replaceWith(keywordListHtml);
+        this.refreshTopics();
+        this.subscription.save(type);
+        this.setUpFilteringListEvents();
+    };
+    UIManager.prototype.setUpFilteringListEvents = function () {
+        this.subscription.forEachFilteringType(this.setUpFilteringListTypeEvents, this);
+    };
+    UIManager.prototype.setUpFilteringListTypeEvents = function (type) {
+        var _this = this;
+        var ids = this.subscription.getIds(type);
+        var keywordList = this.subscription.getFilteringList(type);
+        $id(ids.plusBtnId).click(function () {
+            var keyword = prompt("Add keyword", "");
+            if (keyword !== null) {
+                keywordList.push(keyword);
+                _this.refreshFilteringList(type);
+            }
+        });
+        // Erase button event
+        $id(ids.eraseBtnId).click(function () {
+            if (confirm("Erase all the keyword of this list ?")) {
+                keywordList.length = 0;
+                _this.refreshFilteringList(type);
+            }
+        });
+        // Keyword buttons events
+        var t = this;
+        for (var i = 0; i < keywordList.length; i++) {
+            var keywordId = this.getId(ids.typeId, keywordList[i]);
+            $id(keywordId).click(function () {
+                var keyword = $(this).text();
+                if (confirm("Delete the keyword ?")) {
+                    var index = keywordList.indexOf(keyword);
+                    if (index > -1) {
+                        keywordList.splice(index, 1);
+                        t.refreshFilteringList(type);
+                    }
+                }
+            });
+        }
+    };
+    UIManager.prototype.refreshTopics = function () {
+        this.topicManager.resetSorting();
+        $(cst.topicSelector).toArray().forEach(this.topicManager.refreshTopic, this.topicManager);
+    };
+    UIManager.prototype.getId = function (keywordListId, keyword) {
+        return keywordListId + "_" + keyword;
+    };
+    UIManager.prototype.refreshTopic = function (topicNode) {
+        this.topicManager.refreshTopic(topicNode);
+    };
+    UIManager.prototype.resetSorting = function () {
+        this.topicManager.resetSorting();
+    };
+    return UIManager;
+}());
+
+$(document).ready(function () {
+    var subscription = new Subscription("");
+    var uiManager = new UIManager();
+    var uiBind = callbackBind(uiManager);
+    uiManager.setSubscription(subscription);
+    // Adding filtering configuration
+    NodeCreationObserver.onCreation(cst.settingsDivPredecessorSelector, function (element) {
+        console.log("Feedly page fully loaded");
+        uiManager.setUpSettingsMenu(element);
     }, true);
     // Reset titles array when changing page
-    NodeCreationObserver.onCreation(".feedUnreadCountHint, .categoryUnreadCountHint", tmBind(topicManager.resetSorting));
+    NodeCreationObserver.onCreation(".feedUnreadCountHint, .categoryUnreadCountHint", uiBind(uiManager.resetSorting));
     // New topics listener
-    NodeCreationObserver.onCreation(cst.topicSelector, tmBind(topicManager.refreshTopic));
+    NodeCreationObserver.onCreation(cst.topicSelector, uiBind(uiManager.refreshTopic));
 });
