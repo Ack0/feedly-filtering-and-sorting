@@ -18,7 +18,7 @@ export class TopicManager {
         this.nbrRecommendationsArray = [];
     }
 
-    refreshTopic(topicNode) {
+    refreshTopic(topicNode: Node) {
         var topic = $(topicNode);
         var title = topic.attr(cst.topicTitleAttribute).toLowerCase();
         if (this.subscription.isFilteringEnabled() || this.subscription.isRestrictingEnabled()) {

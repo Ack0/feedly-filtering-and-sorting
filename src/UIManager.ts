@@ -13,6 +13,8 @@ export class UIManager {
     settingsDivId = "settingsDiv";
     enableFilteringCheckId = "enableFiltering";
     enableRestrictingCheckId = "enableRestricting";
+    keywordToId = {};
+    idCount = 1;
 
     setSubscription(subscription: Subscription) {
         this.subscription = subscription;
@@ -108,33 +110,34 @@ export class UIManager {
     }
 
     setUpSettingsMenuEvents() {
-        var t = this;        
+        var this_ = this;
+
         // Set checkbox & select boxes correct state
         var filteringCheck = $id(this.enableFilteringCheckId);
         var restrictingCheck = $id(this.enableRestrictingCheckId);
         var sortingCheck = $id(cst.sortingEnabledId);
-        var sortingTypeSelect = $id(cst.sortingTypeId);        
+        var sortingTypeSelect = $id(cst.sortingTypeId);
         filteringCheck.prop('checked', this.subscription.isFilteringEnabled());
         restrictingCheck.prop('checked', this.subscription.isRestrictingEnabled());
         sortingCheck.prop('checked', this.subscription.isSortingEnabled());
         sortingTypeSelect.val(this.subscription.getSortingType());
-        
+
         // Checkbox & select boxes events
         filteringCheck.change(function () {
-            t.subscription.setFilteringEnabled($(this).is(':checked'));
-            t.refreshTopics();
+            this_.subscription.setFilteringEnabled($(this).is(':checked'));
+            this_.refreshTopics();
         });
         restrictingCheck.change(function () {
-            t.subscription.setRestrictingEnabled($(this).is(':checked'));
-            t.refreshTopics();
+            this_.subscription.setRestrictingEnabled($(this).is(':checked'));
+            this_.refreshTopics();
         });
         sortingCheck.change(function () {
-            t.subscription.setSortingEnabled($(this).is(':checked'));
-            t.refreshTopics();
+            this_.subscription.setSortingEnabled($(this).is(':checked'));
+            this_.refreshTopics();
         });
         sortingTypeSelect.change(function () {
-            t.subscription.setSortingType(sortingTypeSelect.val());
-            t.refreshTopics();
+            this_.subscription.setSortingType(sortingTypeSelect.val());
+            this_.refreshTopics();
         });
 
         // Setting button events
@@ -142,7 +145,7 @@ export class UIManager {
             var current = $(this).attr("src");
             var swap = $(this).attr(cst.toggleSrcAttr);
             $(this).attr('src', swap).attr(cst.toggleSrcAttr, current);
-            $id(t.settingsDivId).toggle();
+            $id(this_.settingsDivId).toggle();
         });
 
         this.setUpFilteringListEvents();
@@ -183,7 +186,7 @@ export class UIManager {
         });
 
         // Keyword buttons events
-        var t = this;        
+        var t = this;
         for (var i = 0; i < keywordList.length; i++) {
             var keywordId = this.getId(ids.typeId, keywordList[i]);
             $id(keywordId).click(function () {
@@ -205,10 +208,14 @@ export class UIManager {
     }
 
     getId(keywordListId: string, keyword: string) {
-        return keywordListId + "_" + keyword;
+        if (!(keyword in this.keywordToId)) {
+            var id = this.idCount++;
+            this.keywordToId[keyword] = id;
+        }
+        return keywordListId + "_" + this.keywordToId[keyword];
     }
 
-    refreshTopic(topicNode) {
+    refreshTopic(topicNode: Node) {
         this.topicManager.refreshTopic(topicNode);
     }
 

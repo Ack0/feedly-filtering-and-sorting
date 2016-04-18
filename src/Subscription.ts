@@ -49,34 +49,34 @@ export class Subscription {
             eraseBtnId: "DeleteAllFilteredOutKeyword"
         };
 
-        this.forEachFilteringType(function(type) {
+        this.forEachFilteringType((type) => {
             var ids = this.filteringIdsByType[type];
-            this.filteringListsByType[type] = this.dao.deserialize(ids.typeId, []);
+            this.filteringListsByType[type] = this.dao.getValue(ids.typeId, []);
         }, this);
     }
-    
-    isFilteringEnabled() : boolean {
+
+    isFilteringEnabled(): boolean {
         return this.filteringEnabled;
     }
     setFilteringEnabled(filteringEnabled: boolean) {
         this.filteringEnabled = filteringEnabled;
         this.dao.setValue(cst.filteringEnabledId, this.filteringEnabled);
     }
-    isRestrictingEnabled() : boolean {
+    isRestrictingEnabled(): boolean {
         return this.restrictingEnabled;
     }
     setRestrictingEnabled(restrictingEnabled: boolean) {
         this.restrictingEnabled = restrictingEnabled;
-        this.dao.setValue(cst.restrictingEnabledId, this.restrictingEnabled);            
+        this.dao.setValue(cst.restrictingEnabledId, this.restrictingEnabled);
     }
-    isSortingEnabled() : boolean {
+    isSortingEnabled(): boolean {
         return this.sortingEnabled;
     }
     setSortingEnabled(sortingEnabled: boolean) {
         this.sortingEnabled = sortingEnabled;
         this.dao.setValue(cst.sortingEnabledId, this.sortingEnabled);
     }
-    getSortingType() : SortingType {
+    getSortingType(): SortingType {
         return this.sortingType;
     }
     setSortingType(sortingType: SortingType) {
@@ -93,12 +93,13 @@ export class Subscription {
     }
 
     forEachFilteringType(callback: (type: FilteringType) => any, thisArg?: any) {
-        Object.keys(this.filteringIdsByType).forEach(function(type) {
+        Object.keys(this.filteringIdsByType).forEach(function (type) {
             callback.call(thisArg, type);
         });
     }
 
     save(type: FilteringType) {
-        this.dao.serialize(this.getIds(type).typeId, this.getFilteringList(type));
+        this.dao.setValue(this.getIds(type).typeId, this.getFilteringList(type));
     }
 }
+

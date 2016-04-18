@@ -77,6 +77,7 @@ var FilteringTypeIds = (function () {
 }());
 var Subscription = (function () {
     function Subscription(path) {
+        var _this = this;
         this.filteringIdsByType = {};
         this.filteringListsByType = {};
         this.dao = new DAO(path);
@@ -95,8 +96,8 @@ var Subscription = (function () {
             eraseBtnId: "DeleteAllFilteredOutKeyword"
         };
         this.forEachFilteringType(function (type) {
-            var ids = this.filteringIdsByType[type];
-            this.filteringListsByType[type] = this.dao.deserialize(ids.typeId, []);
+            var ids = _this.filteringIdsByType[type];
+            _this.filteringListsByType[type] = _this.dao.getValue(ids.typeId, []);
         }, this);
     }
     Subscription.prototype.isFilteringEnabled = function () {
@@ -139,7 +140,7 @@ var Subscription = (function () {
         });
     };
     Subscription.prototype.save = function (type) {
-        this.dao.serialize(this.getIds(type).typeId, this.getFilteringList(type));
+        this.dao.setValue(this.getIds(type).typeId, this.getFilteringList(type));
     };
     return Subscription;
 }());
@@ -232,23 +233,11 @@ var DAO = (function () {
     function DAO(path) {
         this.path = path;
     }
-    DAO.prototype.deserializeDirectly = function (id, def) {
-        return eval(GM_getValue(id, (def || '({})')));
-    };
-    DAO.prototype.serializeDirectly = function (id, val) {
-        GM_setValue(id, uneval(val));
-    };
-    DAO.prototype.deserialize = function (id, def) {
-        return eval(this.getValue(id, (def || '({})')));
-    };
-    DAO.prototype.serialize = function (id, val) {
-        this.setValue(id, uneval(val));
-    };
-    DAO.prototype.getValue = function (id, value) {
-        return GM_getValue(id, value);
+    DAO.prototype.getValue = function (id, defaultValue) {
+        return JSON.parse(GM_getValue(id, JSON.stringify(defaultValue)));
     };
     DAO.prototype.setValue = function (id, value) {
-        GM_setValue(id, value);
+        GM_setValue(id, JSON.stringify(value));
     };
     return DAO;
 }());
@@ -260,6 +249,8 @@ var UIManager = (function () {
         this.settingsDivId = "settingsDiv";
         this.enableFilteringCheckId = "enableFiltering";
         this.enableRestrictingCheckId = "enableRestricting";
+        this.keywordToId = {};
+        this.idCount = 1;
     }
     UIManager.prototype.setSubscription = function (subscription) {
         this.subscription = subscription;
@@ -336,7 +327,7 @@ var UIManager = (function () {
         return settingsBtn;
     };
     UIManager.prototype.setUpSettingsMenuEvents = function () {
-        var t = this;
+        var this_ = this;
         // Set checkbox & select boxes correct state
         var filteringCheck = $id(this.enableFilteringCheckId);
         var restrictingCheck = $id(this.enableRestrictingCheckId);
@@ -348,27 +339,27 @@ var UIManager = (function () {
         sortingTypeSelect.val(this.subscription.getSortingType());
         // Checkbox & select boxes events
         filteringCheck.change(function () {
-            t.subscription.setFilteringEnabled($(this).is(':checked'));
-            t.refreshTopics();
+            this_.subscription.setFilteringEnabled($(this).is(':checked'));
+            this_.refreshTopics();
         });
         restrictingCheck.change(function () {
-            t.subscription.setRestrictingEnabled($(this).is(':checked'));
-            t.refreshTopics();
+            this_.subscription.setRestrictingEnabled($(this).is(':checked'));
+            this_.refreshTopics();
         });
         sortingCheck.change(function () {
-            t.subscription.setSortingEnabled($(this).is(':checked'));
-            t.refreshTopics();
+            this_.subscription.setSortingEnabled($(this).is(':checked'));
+            this_.refreshTopics();
         });
         sortingTypeSelect.change(function () {
-            t.subscription.setSortingType(sortingTypeSelect.val());
-            t.refreshTopics();
+            this_.subscription.setSortingType(sortingTypeSelect.val());
+            this_.refreshTopics();
         });
         // Setting button events
         $id(this.settingsBtnId).click(function () {
             var current = $(this).attr("src");
             var swap = $(this).attr(cst.toggleSrcAttr);
             $(this).attr('src', swap).attr(cst.toggleSrcAttr, current);
-            $id(t.settingsDivId).toggle();
+            $id(this_.settingsDivId).toggle();
         });
         this.setUpFilteringListEvents();
     };
@@ -422,7 +413,11 @@ var UIManager = (function () {
         $(cst.topicSelector).toArray().forEach(this.topicManager.refreshTopic, this.topicManager);
     };
     UIManager.prototype.getId = function (keywordListId, keyword) {
-        return keywordListId + "_" + keyword;
+        if (!(keyword in this.keywordToId)) {
+            var id = this.idCount++;
+            this.keywordToId[keyword] = id;
+        }
+        return keywordListId + "_" + this.keywordToId[keyword];
     };
     UIManager.prototype.refreshTopic = function (topicNode) {
         this.topicManager.refreshTopic(topicNode);
