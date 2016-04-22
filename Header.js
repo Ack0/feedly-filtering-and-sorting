@@ -8,7 +8,7 @@
 // @supportURL  https://github.com/soufianesakhi/feedly-filtering-and-sorting/issues
 // @icon        http://s3.feedly.com/img/feedly-512.png
 // @require     http://code.jquery.com/jquery.min.js
-// @require     https://openuserjs.org/src/libs/soufianesakhi/node-creation-observer.min.js
+// @require     https://raw.githubusercontent.com/soufianesakhi/node-creation-observer-js/master/release/node-creation-observer-latest.js
 // @include     *://feedly.com/*
 // @version     1.0.0
 // @grant       GM_setValue

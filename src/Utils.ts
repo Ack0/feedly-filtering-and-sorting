@@ -1,9 +1,4 @@
 var exported = {};
-export function callbackBind(thisArg: any): (callback: (...args: any[]) => any) => any {
-    return (function(callback: () => any) {
-        return callback.bind(this);
-    }).bind(thisArg);
-}
 
 export function $id(id) {
     return $('#' + id);
@@ -19,4 +14,10 @@ export function insertIndex(element: JQuery, i: number) {
     } else {
         $target.after(element);
     }
+}
+
+export function callbackBind(thisArg: any): (callback: (...args: any[]) => any) => any {
+    return (function(callback: () => any) {
+        return callback.bind(this);
+    }).bind(thisArg);
 }

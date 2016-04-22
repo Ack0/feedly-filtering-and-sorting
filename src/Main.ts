@@ -8,20 +8,23 @@ import {UIManager} from "./UIManager";
 import {callbackBind} from "./Utils";
 
 $(document).ready(function () {
-    var subscription = new Subscription("");
     var uiManager = new UIManager();
-    var uiBind = callbackBind(uiManager);
-    uiManager.setSubscription(subscription)
+    var uiManagerBind = callbackBind(uiManager);
 
     // Adding filtering configuration
     NodeCreationObserver.onCreation(cst.settingsDivPredecessorSelector, function (element) {
         console.log("Feedly page fully loaded");
-        uiManager.setUpSettingsMenu(element);
+
+        // Set up first page
+        NodeCreationObserver.onCreation(cst.pageChangeSelector, function() {
+            uiManager.refreshPage();
+            uiManager.setUpSettingsMenu(element);
+        
+            // Reset titles array when changing page
+            NodeCreationObserver.onCreation(cst.pageChangeSelector, uiManagerBind(uiManager.refreshPage));
+        }, true);
+
+        // New topics listener
+        NodeCreationObserver.onCreation(cst.topicSelector, uiManagerBind(uiManager.refreshTopic));
     }, true);
-
-    // Reset titles array when changing page
-    NodeCreationObserver.onCreation(".feedUnreadCountHint, .categoryUnreadCountHint", uiBind(uiManager.resetSorting));
-
-    // New topics listener
-    NodeCreationObserver.onCreation(cst.topicSelector, uiBind(uiManager.refreshTopic));
 });

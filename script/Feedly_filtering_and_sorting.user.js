@@ -8,7 +8,7 @@
 // @supportURL  https://github.com/soufianesakhi/feedly-filtering-and-sorting/issues
 // @icon        http://s3.feedly.com/img/feedly-512.png
 // @require     http://code.jquery.com/jquery.min.js
-// @require     https://openuserjs.org/src/libs/soufianesakhi/node-creation-observer.min.js
+// @require     https://raw.githubusercontent.com/soufianesakhi/node-creation-observer-js/master/release/node-creation-observer-latest.js
 // @include     *://feedly.com/*
 // @version     1.0.0
 // @grant       GM_setValue
@@ -23,6 +23,7 @@ var cst = {
     "settingsDivPredecessorSelector": "#feedlyPageHeader",
     "settingsBtnPredecessorSelector": "#pageActionCustomize",
     "topicSelector": "#section0_column0 > div",
+    "pageChangeSelector": "h1#feedlyTitleBar > .hhint",
     "topicTitleAttribute": "data-title",
     "nbrRecommendationsSelector": ".nbrRecommendations",
     "keywordTagStyle": "vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer;",
@@ -38,11 +39,6 @@ var cst = {
 };
 
 var exported = {};
-function callbackBind(thisArg) {
-    return (function (callback) {
-        return callback.bind(this);
-    }).bind(thisArg);
-}
 function $id(id) {
     return $('#' + id);
 }
@@ -56,6 +52,11 @@ function insertIndex(element, i) {
     else {
         $target.after(element);
     }
+}
+function callbackBind(thisArg) {
+    return (function (callback) {
+        return callback.bind(this);
+    }).bind(thisArg);
 }
 
 (function (FilteringType) {
@@ -252,10 +253,6 @@ var UIManager = (function () {
         this.keywordToId = {};
         this.idCount = 1;
     }
-    UIManager.prototype.setSubscription = function (subscription) {
-        this.subscription = subscription;
-        this.topicManager.setSubscription(subscription);
-    };
     UIManager.prototype.setUpSettingsMenu = function (settingsDivPredecessor) {
         var settingsDiv = this.getSettingsMenuHTML();
         var settingsBtn = this.getSettingsBtnHTML();
@@ -419,27 +416,39 @@ var UIManager = (function () {
         }
         return keywordListId + "_" + this.keywordToId[keyword];
     };
-    UIManager.prototype.refreshTopic = function (topicNode) {
-        this.topicManager.refreshTopic(topicNode);
+    UIManager.prototype.refreshPage = function () {
+        this.refreshSubscription();
+        this.resetSorting();
+    };
+    UIManager.prototype.refreshSubscription = function () {
+        var url = document.URL;
+        console.log("url changed: " + url);
+        this.subscription = new Subscription("");
+        this.topicManager.setSubscription(this.subscription);
     };
     UIManager.prototype.resetSorting = function () {
         this.topicManager.resetSorting();
+    };
+    UIManager.prototype.refreshTopic = function (topicNode) {
+        this.topicManager.refreshTopic(topicNode);
     };
     return UIManager;
 }());
 
 $(document).ready(function () {
-    var subscription = new Subscription("");
     var uiManager = new UIManager();
-    var uiBind = callbackBind(uiManager);
-    uiManager.setSubscription(subscription);
+    var uiManagerBind = callbackBind(uiManager);
     // Adding filtering configuration
     NodeCreationObserver.onCreation(cst.settingsDivPredecessorSelector, function (element) {
         console.log("Feedly page fully loaded");
-        uiManager.setUpSettingsMenu(element);
+        // Set up first page
+        NodeCreationObserver.onCreation(cst.pageChangeSelector, function () {
+            uiManager.refreshPage();
+            uiManager.setUpSettingsMenu(element);
+            // Reset titles array when changing page
+            NodeCreationObserver.onCreation(cst.pageChangeSelector, uiManagerBind(uiManager.refreshPage));
+        }, true);
+        // New topics listener
+        NodeCreationObserver.onCreation(cst.topicSelector, uiManagerBind(uiManager.refreshTopic));
     }, true);
-    // Reset titles array when changing page
-    NodeCreationObserver.onCreation(".feedUnreadCountHint, .categoryUnreadCountHint", uiBind(uiManager.resetSorting));
-    // New topics listener
-    NodeCreationObserver.onCreation(cst.topicSelector, uiBind(uiManager.refreshTopic));
 });

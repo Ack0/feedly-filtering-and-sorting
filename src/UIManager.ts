@@ -16,11 +16,6 @@ export class UIManager {
     keywordToId = {};
     idCount = 1;
 
-    setSubscription(subscription: Subscription) {
-        this.subscription = subscription;
-        this.topicManager.setSubscription(subscription);
-    }
-
     setUpSettingsMenu(settingsDivPredecessor: Node) {
         var settingsDiv = this.getSettingsMenuHTML();
         var settingsBtn = this.getSettingsBtnHTML();
@@ -215,12 +210,26 @@ export class UIManager {
         return keywordListId + "_" + this.keywordToId[keyword];
     }
 
-    refreshTopic(topicNode: Node) {
-        this.topicManager.refreshTopic(topicNode);
+    initPage
+
+    refreshPage() {
+        this.refreshSubscription()
+        this.resetSorting();
+    }
+
+    refreshSubscription() {
+        var url = document.URL;
+        console.log("url changed: " + url);
+        this.subscription = new Subscription("");
+        this.topicManager.setSubscription(this.subscription);
     }
 
     resetSorting() {
         this.topicManager.resetSorting();
+    }
+
+    refreshTopic(topicNode: Node) {
+        this.topicManager.refreshTopic(topicNode);
     }
 
 }

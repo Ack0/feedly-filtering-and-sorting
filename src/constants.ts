@@ -7,6 +7,7 @@ var cst = {
 	"settingsDivPredecessorSelector": "#feedlyPageHeader",
 	"settingsBtnPredecessorSelector": "#pageActionCustomize",
 	"topicSelector": "#section0_column0 > div",
+	"pageChangeSelector": "h1#feedlyTitleBar > .hhint",
 	"topicTitleAttribute": "data-title",
 	"nbrRecommendationsSelector": ".nbrRecommendations",
 

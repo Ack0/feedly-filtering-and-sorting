@@ -68,12 +68,12 @@ module.exports = function(grunt) {
         concat: {
             script: {
                 src: ['Header.js'].concat(targetFiles),
-                dest: 'script/<%= pkg.name %>.js'
+                dest: 'script/<%= pkg.name %>.user.js'
             }
         },
         copy: {
             deploy: {
-                src: 'script/<%= pkg.name %>.js',
+                src: 'script/<%= pkg.name %>.user.js',
                 dest: '<%= deploy.path %>',
                 filter: function(filepath) {
                     var dest = grunt.config('copy.deploy.dest');
