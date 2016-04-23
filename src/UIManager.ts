@@ -1,9 +1,8 @@
 /// <reference path="./_references.d.ts" />
 
-import {Subscription} from "./Subscription";
+import * as cst from "constants";
+import {Subscription, FilteringType, SortingType} from "./Subscription";
 import {TopicManager} from "./TopicManager";
-import {FilteringType} from "./Subscription";
-import {SortingType} from "./Subscription";
 import {$id} from "./Utils";
 
 export class UIManager {

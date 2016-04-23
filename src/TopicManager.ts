@@ -1,7 +1,7 @@
 /// <reference path="./_references.d.ts" />
-import {Subscription} from "./_references";
-import {SortingType} from "./Subscription";
-import {FilteringType} from "./Subscription";
+
+import * as cst from "constants";
+import {Subscription, SortingType, FilteringType} from "./Subscription";
 import {insertIndex} from "./Utils";
 
 export class TopicManager {

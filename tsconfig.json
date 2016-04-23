@@ -1,12 +1,24 @@
 {
-    "files": [
-        "src/Main.ts"
-    ],
-    "compileOnSave": true,
     "compilerOptions": {
         "target": "es5",
         "outDir": "target",
         "noImplicitUseStrict": true,
         "watch": true
+    },
+    "filesGlob": [
+        "src/*.ts"
+    ],
+    "files": [
+        "src/_references.d.ts",
+        "src/Constants.ts",
+        "src/DAO.ts",
+        "src/Main.ts",
+        "src/Subscription.ts",
+        "src/TopicManager.ts",
+        "src/UIManager.ts",
+        "src/Utils.ts"
+    ],
+    "atom": {
+        "rewriteTsconfig": true
     }
 }

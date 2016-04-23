@@ -102,4 +102,3 @@ export class Subscription {
         this.dao.setValue(this.getIds(type).typeId, this.getFilteringList(type));
     }
 }
-

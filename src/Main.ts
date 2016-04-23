@@ -1,8 +1,6 @@
 /// <reference path="./_references.d.ts" />
 
 import * as cst from "constants";
-import * as $ from "jquery";
-import * as NodeCreationObserver from "node-creation-observer";
 import {Subscription} from "./Subscription";
 import {UIManager} from "./UIManager";
 import {callbackBind} from "./Utils";
@@ -19,7 +17,7 @@ $(document).ready(function () {
         NodeCreationObserver.onCreation(cst.pageChangeSelector, function() {
             uiManager.refreshPage();
             uiManager.setUpSettingsMenu(element);
-        
+
             // Reset titles array when changing page
             NodeCreationObserver.onCreation(cst.pageChangeSelector, uiManagerBind(uiManager.refreshPage));
         }, true);
