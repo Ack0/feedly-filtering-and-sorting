@@ -1,6 +1,5 @@
 /// <reference path="./_references.d.ts" />
 
-import * as cst from "constants";
 import {DAO} from "./DAO";
 import * as NodeCreationObserver from "node-creation-observer";
 
@@ -30,13 +29,17 @@ export class Subscription {
     private filteringIdsByType: { [key: number]: FilteringTypeIds; } = {};
     private filteringListsByType: { [key: number]: string[]; } = {};
     dao: DAO;
+	filteringEnabledId = "filteringEnabled";
+	restrictingEnabledId = "restrictingEnabled";
+	sortingEnabledId = "sortingEnabled";
+	sortingTypeId = "sortingType";
 
     constructor(path: string) {
         this.dao = new DAO(path);
-        this.filteringEnabled = this.dao.getValue(cst.filteringEnabledId, false);
-        this.restrictingEnabled = this.dao.getValue(cst.restrictingEnabledId, false);
-        this.sortingEnabled = this.dao.getValue(cst.sortingEnabledId, false);
-        this.sortingType = this.dao.getValue(cst.sortingTypeId, SortingType.PopularityDesc);
+        this.filteringEnabled = this.dao.getValue(this.filteringEnabledId, false);
+        this.restrictingEnabled = this.dao.getValue(this.restrictingEnabledId, false);
+        this.sortingEnabled = this.dao.getValue(this.sortingEnabledId, false);
+        this.sortingType = this.dao.getValue(this.sortingTypeId, SortingType.PopularityDesc);
 
         this.filteringIdsByType[FilteringType.RestrictedOn] = {
             typeId: "restrictedOnKeywords",
@@ -60,28 +63,28 @@ export class Subscription {
     }
     setFilteringEnabled(filteringEnabled: boolean) {
         this.filteringEnabled = filteringEnabled;
-        this.dao.setValue(cst.filteringEnabledId, this.filteringEnabled);
+        this.dao.setValue(this.filteringEnabledId, this.filteringEnabled);
     }
     isRestrictingEnabled(): boolean {
         return this.restrictingEnabled;
     }
     setRestrictingEnabled(restrictingEnabled: boolean) {
         this.restrictingEnabled = restrictingEnabled;
-        this.dao.setValue(cst.restrictingEnabledId, this.restrictingEnabled);
+        this.dao.setValue(this.restrictingEnabledId, this.restrictingEnabled);
     }
     isSortingEnabled(): boolean {
         return this.sortingEnabled;
     }
     setSortingEnabled(sortingEnabled: boolean) {
         this.sortingEnabled = sortingEnabled;
-        this.dao.setValue(cst.sortingEnabledId, this.sortingEnabled);
+        this.dao.setValue(this.sortingEnabledId, this.sortingEnabled);
     }
     getSortingType(): SortingType {
         return this.sortingType;
     }
     setSortingType(sortingType: SortingType) {
         this.sortingType = sortingType;
-        this.dao.setValue(cst.sortingTypeId, this.sortingType);
+        this.dao.setValue(this.sortingTypeId, this.sortingType);
     }
 
     getFilteringList(type: FilteringType): string[] {

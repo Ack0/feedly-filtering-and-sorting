@@ -20,22 +20,14 @@ var cst = {
     "plusIconLink": "https://cdn0.iconfinder.com/data/icons/social-messaging-ui-color-shapes/128/add-circle-blue-128.png",
     "eraseIconLink": "https://cdn2.iconfinder.com/data/icons/large-glossy-svg-icons/512/erase_delete_remove_wipe_out-128.png",
     "closeIconLink": "https://cdn2.iconfinder.com/data/icons/social-productivity-line-art-1/128/close-cancel-128.png",
-    "settingsDivPredecessorSelector": "#feedlyPageHeader",
-    "settingsBtnPredecessorSelector": "#pageActionCustomize",
+    "settingsBtnPredecessorSelector": "#pageActionCustomize, #floatingPageActionCustomize",
     "topicSelector": "#section0_column0 > div",
     "pageChangeSelector": "h1#feedlyTitleBar > .hhint",
     "topicTitleAttribute": "data-title",
     "nbrRecommendationsSelector": ".nbrRecommendations",
     "keywordTagStyle": "vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer;",
     "iconStyle": "vertical-align: middle; height: 20px; width: 20px; cursor: pointer;",
-    "settingsDivSpanStyle": "style='display: inline; vertical-align: middle;'",
-    "profileNameId": "profileName",
-    "profileListId": "profileList",
-    "filteringEnabledId": "filteringEnabled",
-    "restrictingEnabledId": "restrictingEnabled",
-    "sortingEnabledId": "sortingEnabled",
-    "sortingTypeId": "sortingType",
-    "toggleSrcAttr": "toggle-src"
+    "settingsDivSpanStyle": "style='display: inline; vertical-align: middle;'"
 };
 
 var exported = {};
@@ -81,11 +73,15 @@ var Subscription = (function () {
         var _this = this;
         this.filteringIdsByType = {};
         this.filteringListsByType = {};
+        this.filteringEnabledId = "filteringEnabled";
+        this.restrictingEnabledId = "restrictingEnabled";
+        this.sortingEnabledId = "sortingEnabled";
+        this.sortingTypeId = "sortingType";
         this.dao = new DAO(path);
-        this.filteringEnabled = this.dao.getValue(cst.filteringEnabledId, false);
-        this.restrictingEnabled = this.dao.getValue(cst.restrictingEnabledId, false);
-        this.sortingEnabled = this.dao.getValue(cst.sortingEnabledId, false);
-        this.sortingType = this.dao.getValue(cst.sortingTypeId, SortingType.PopularityDesc);
+        this.filteringEnabled = this.dao.getValue(this.filteringEnabledId, false);
+        this.restrictingEnabled = this.dao.getValue(this.restrictingEnabledId, false);
+        this.sortingEnabled = this.dao.getValue(this.sortingEnabledId, false);
+        this.sortingType = this.dao.getValue(this.sortingTypeId, SortingType.PopularityDesc);
         this.filteringIdsByType[FilteringType.RestrictedOn] = {
             typeId: "restrictedOnKeywords",
             plusBtnId: "AddRestrictedOnKeyword",
@@ -106,28 +102,28 @@ var Subscription = (function () {
     };
     Subscription.prototype.setFilteringEnabled = function (filteringEnabled) {
         this.filteringEnabled = filteringEnabled;
-        this.dao.setValue(cst.filteringEnabledId, this.filteringEnabled);
+        this.dao.setValue(this.filteringEnabledId, this.filteringEnabled);
     };
     Subscription.prototype.isRestrictingEnabled = function () {
         return this.restrictingEnabled;
     };
     Subscription.prototype.setRestrictingEnabled = function (restrictingEnabled) {
         this.restrictingEnabled = restrictingEnabled;
-        this.dao.setValue(cst.restrictingEnabledId, this.restrictingEnabled);
+        this.dao.setValue(this.restrictingEnabledId, this.restrictingEnabled);
     };
     Subscription.prototype.isSortingEnabled = function () {
         return this.sortingEnabled;
     };
     Subscription.prototype.setSortingEnabled = function (sortingEnabled) {
         this.sortingEnabled = sortingEnabled;
-        this.dao.setValue(cst.sortingEnabledId, this.sortingEnabled);
+        this.dao.setValue(this.sortingEnabledId, this.sortingEnabled);
     };
     Subscription.prototype.getSortingType = function () {
         return this.sortingType;
     };
     Subscription.prototype.setSortingType = function (sortingType) {
         this.sortingType = sortingType;
-        this.dao.setValue(cst.sortingTypeId, this.sortingType);
+        this.dao.setValue(this.sortingTypeId, this.sortingType);
     };
     Subscription.prototype.getFilteringList = function (type) {
         return this.filteringListsByType[type];
@@ -247,27 +243,26 @@ var UIManager = (function () {
     function UIManager() {
         this.topicManager = new TopicManager();
         this.settingsBtnId = "settingsBtn";
-        this.settingsDivId = "settingsDiv";
+        this.settingsDivContainerId = "settingsDivContainer";
+        this.closeBtnId = "CloseSettingsBtn";
         this.enableFilteringCheckId = "enableFiltering";
         this.enableRestrictingCheckId = "enableRestricting";
+        this.sortingTypeId = "sortingType";
         this.keywordToId = {};
         this.idCount = 1;
     }
-    UIManager.prototype.setUpSettingsMenu = function (settingsDivPredecessor) {
-        var settingsDiv = this.getSettingsMenuHTML();
-        var settingsBtn = this.getSettingsBtnHTML();
-        $(settingsDivPredecessor).after(settingsDiv);
-        $(cst.settingsBtnPredecessorSelector).after(settingsBtn);
-        $id(this.settingsDivId).css("display", "none")
-            .css('margin', '25px')
-            .css('border-radius', '25px')
-            .css('border', '2px solid #336699')
-            .css('background', '#E0F5FF')
-            .css('padding', '20px');
+    UIManager.prototype.setUpSettingsMenu = function () {
+        this.initSettingsMenu();
+        this.initSettingsBtns();
         this.setUpSettingsMenuEvents();
     };
-    UIManager.prototype.getSettingsMenuHTML = function () {
-        var settingsDiv = '<div id="' + this.settingsDivId + '" >' +
+    UIManager.prototype.initSettingsMenu = function () {
+        var settingsDivId = "settingsDiv";
+        var settingsDiv = '<div id="' + this.settingsDivContainerId + '" >' +
+            '<div id="' + settingsDivId + '" >' +
+            '<div>' +
+            // Close btn
+            '<img id="' + this.closeBtnId + '" src="' + cst.closeIconLink + '" style="float:right;display:inline-block;width: 24px; height: 24px;" class="pageAction requiresLogin"/>' +
             // Checkbox to enable filtering
             '<div>' +
             '<span ' + cst.settingsDivSpanStyle + '>Filtering enabled</span>' +
@@ -281,8 +276,8 @@ var UIManager = (function () {
             // Checkbox to enable sorting
             '<div>' +
             '<span ' + cst.settingsDivSpanStyle + '>Sorting enabled</span>' +
-            '<input id="' + cst.sortingEnabledId + '" type="checkbox" style="vertical-align: middle;">' +
-            '<select id=' + cst.sortingTypeId + '>' +
+            '<input id="' + this.sortingEnabledId + '" type="checkbox" style="vertical-align: middle;">' +
+            '<select id=' + this.sortingTypeId + '>' +
             '<option value="' + SortingType.PopularityDesc + '">Sort by number of recommendations (highest to lowest)</option>' +
             '<option value="' + SortingType.TitleAsc + '">Sort by title (a -> z)</option>' +
             '<option value="' + SortingType.PopularityAsc + '">Sort by number of recommendations (lowest to highest)</option>' +
@@ -299,8 +294,25 @@ var UIManager = (function () {
             '<span ' + cst.settingsDivSpanStyle + '>Filtered out keyword list: </span>' +
             this.getFilteringListHTML(FilteringType.FilteredOut) +
             '</div>' +
+            '</div>' +
             '</div>';
-        return settingsDiv;
+        $("body").prepend(settingsDiv);
+        $id(settingsDivId)
+            .css('margin', '25px')
+            .css('border-radius', '25px')
+            .css('border', '2px solid #336699')
+            .css('background', '#E0F5FF')
+            .css('padding', '20px')
+            .css('opacity', '1');
+        $id(this.settingsDivContainerId)
+            .css("display", "none")
+            .css('background', 'rgba(0,0,0,0.9)')
+            .css('width', '100%')
+            .css('height', '100%')
+            .css('z-index', '500')
+            .css('top', '0')
+            .css('left', '0')
+            .css('position', 'fixed');
     };
     UIManager.prototype.getFilteringListHTML = function (type) {
         var ids = this.subscription.getIds(type);
@@ -309,7 +321,7 @@ var UIManager = (function () {
         // keyword list
         for (var i = 0; i < filteringList.length; i++) {
             var keyword = filteringList[i];
-            var keywordId = this.getId(ids.typeId, keyword);
+            var keywordId = this.getKeywordId(ids.typeId, keyword);
             result += '<button id="' + keywordId + '" type="button" style="' + cst.keywordTagStyle + '">' + keyword + '</button>';
         }
         // plus button
@@ -319,17 +331,27 @@ var UIManager = (function () {
         result += "</span>";
         return result;
     };
-    UIManager.prototype.getSettingsBtnHTML = function () {
-        var settingsBtn = '<img id="' + this.settingsBtnId + '" class="pageAction requiresLogin" style="display: inline; width: 24px; height: 24px;" src="' + cst.filterIconLink + '" ' + cst.toggleSrcAttr + '="' + cst.closeIconLink + '" alt="icon"/>';
-        return settingsBtn;
+    UIManager.prototype.initSettingsBtns = function () {
+        var this_ = this;
+        $(cst.settingsBtnPredecessorSelector).each(function (i, element) {
+            var clone = $(element).clone();
+            $(clone).attr('id', this_.getBtnId(element.id));
+            $(clone).attr('src', cst.filterIconLink);
+            $(clone).attr('alt', 'icon');
+            $(clone).attr('data-page-action', '');
+            $(element).after(clone);
+            $(clone).click(function () {
+                $id(this_.settingsDivContainerId).toggle();
+            });
+        });
     };
     UIManager.prototype.setUpSettingsMenuEvents = function () {
         var this_ = this;
         // Set checkbox & select boxes correct state
         var filteringCheck = $id(this.enableFilteringCheckId);
         var restrictingCheck = $id(this.enableRestrictingCheckId);
-        var sortingCheck = $id(cst.sortingEnabledId);
-        var sortingTypeSelect = $id(cst.sortingTypeId);
+        var sortingCheck = $id(this.sortingEnabledId);
+        var sortingTypeSelect = $id(this.sortingTypeId);
         filteringCheck.prop('checked', this.subscription.isFilteringEnabled());
         restrictingCheck.prop('checked', this.subscription.isRestrictingEnabled());
         sortingCheck.prop('checked', this.subscription.isSortingEnabled());
@@ -351,12 +373,8 @@ var UIManager = (function () {
             this_.subscription.setSortingType(sortingTypeSelect.val());
             this_.refreshTopics();
         });
-        // Setting button events
-        $id(this.settingsBtnId).click(function () {
-            var current = $(this).attr("src");
-            var swap = $(this).attr(cst.toggleSrcAttr);
-            $(this).attr('src', swap).attr(cst.toggleSrcAttr, current);
-            $id(this_.settingsDivId).toggle();
+        $id(this.closeBtnId).click(function () {
+            $id(this_.settingsDivContainerId).toggle();
         });
         this.setUpFilteringListEvents();
     };
@@ -392,7 +410,7 @@ var UIManager = (function () {
         // Keyword buttons events
         var t = this;
         for (var i = 0; i < keywordList.length; i++) {
-            var keywordId = this.getId(ids.typeId, keywordList[i]);
+            var keywordId = this.getKeywordId(ids.typeId, keywordList[i]);
             $id(keywordId).click(function () {
                 var keyword = $(this).text();
                 if (confirm("Delete the keyword ?")) {
@@ -409,12 +427,15 @@ var UIManager = (function () {
         this.topicManager.resetSorting();
         $(cst.topicSelector).toArray().forEach(this.topicManager.refreshTopic, this.topicManager);
     };
-    UIManager.prototype.getId = function (keywordListId, keyword) {
+    UIManager.prototype.getKeywordId = function (keywordListId, keyword) {
         if (!(keyword in this.keywordToId)) {
             var id = this.idCount++;
             this.keywordToId[keyword] = id;
         }
         return keywordListId + "_" + this.keywordToId[keyword];
+    };
+    UIManager.prototype.getBtnId = function (elementId) {
+        return this.settingsBtnId + "_" + elementId;
     };
     UIManager.prototype.refreshPage = function () {
         this.refreshSubscription();
@@ -438,17 +459,13 @@ var UIManager = (function () {
 $(document).ready(function () {
     var uiManager = new UIManager();
     var uiManagerBind = callbackBind(uiManager);
-    // Adding filtering configuration
-    NodeCreationObserver.onCreation(cst.settingsDivPredecessorSelector, function (element) {
+    NodeCreationObserver.onCreation(cst.pageChangeSelector, function () {
         console.log("Feedly page fully loaded");
-        // Set up first page
-        NodeCreationObserver.onCreation(cst.pageChangeSelector, function () {
-            uiManager.refreshPage();
-            uiManager.setUpSettingsMenu(element);
-            // Reset titles array when changing page
-            NodeCreationObserver.onCreation(cst.pageChangeSelector, uiManagerBind(uiManager.refreshPage));
-        }, true);
+        uiManager.refreshPage();
+        uiManager.setUpSettingsMenu();
         // New topics listener
         NodeCreationObserver.onCreation(cst.topicSelector, uiManagerBind(uiManager.refreshTopic));
+        // Reset titles array when changing page
+        NodeCreationObserver.onCreation(cst.pageChangeSelector, uiManagerBind(uiManager.refreshPage));
     }, true);
 });

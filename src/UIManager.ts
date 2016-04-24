@@ -9,31 +9,30 @@ export class UIManager {
     topicManager: TopicManager = new TopicManager();
     private subscription: Subscription;
     settingsBtnId = "settingsBtn";
-    settingsDivId = "settingsDiv";
+    settingsDivContainerId = "settingsDivContainer";
+    closeBtnId = "CloseSettingsBtn";
     enableFilteringCheckId = "enableFiltering";
     enableRestrictingCheckId = "enableRestricting";
+    sortingTypeId = "sortingType";
+    sortingEnabledId: "sortingEnabled";
     keywordToId = {};
     idCount = 1;
 
-    setUpSettingsMenu(settingsDivPredecessor: Node) {
-        var settingsDiv = this.getSettingsMenuHTML();
-        var settingsBtn = this.getSettingsBtnHTML();
-        $(settingsDivPredecessor).after(settingsDiv);
-        $(cst.settingsBtnPredecessorSelector).after(settingsBtn);
-
-        $id(this.settingsDivId).css("display", "none")
-            .css('margin', '25px')
-            .css('border-radius', '25px')
-            .css('border', '2px solid #336699')
-            .css('background', '#E0F5FF')
-            .css('padding', '20px');
-
+    setUpSettingsMenu() {
+        this.initSettingsMenu();
+        this.initSettingsBtns();
         this.setUpSettingsMenuEvents();
     }
 
-    getSettingsMenuHTML(): string {
+    initSettingsMenu() {
+        var settingsDivId = "settingsDiv";
         var settingsDiv =
-            '<div id="' + this.settingsDivId + '" >' +
+            '<div id="' + this.settingsDivContainerId + '" >' +
+            '<div id="' + settingsDivId + '" >' +
+
+            '<div>' +
+            // Close btn
+            '<img id="' + this.closeBtnId + '" src="' + cst.closeIconLink + '" style="float:right;display:inline-block;width: 24px; height: 24px;" class="pageAction requiresLogin"/>' +
 
             // Checkbox to enable filtering
             '<div>' +
@@ -50,8 +49,8 @@ export class UIManager {
             // Checkbox to enable sorting
             '<div>' +
             '<span ' + cst.settingsDivSpanStyle + '>Sorting enabled</span>' +
-            '<input id="' + cst.sortingEnabledId + '" type="checkbox" style="vertical-align: middle;">' +
-            '<select id=' + cst.sortingTypeId + '>' +
+            '<input id="' + this.sortingEnabledId + '" type="checkbox" style="vertical-align: middle;">' +
+            '<select id=' + this.sortingTypeId + '>' +
             '<option value="' + SortingType.PopularityDesc + '">Sort by number of recommendations (highest to lowest)</option>' +
             '<option value="' + SortingType.TitleAsc + '">Sort by title (a -> z)</option>' +
             '<option value="' + SortingType.PopularityAsc + '">Sort by number of recommendations (lowest to highest)</option>' +
@@ -71,8 +70,25 @@ export class UIManager {
             this.getFilteringListHTML(FilteringType.FilteredOut) +
             '</div>' +
 
+            '</div>' +
             '</div>';
-        return settingsDiv;
+        $("body").prepend(settingsDiv);
+        $id(settingsDivId)
+            .css('margin', '25px')
+            .css('border-radius', '25px')
+            .css('border', '2px solid #336699')
+            .css('background', '#E0F5FF')
+            .css('padding', '20px')
+            .css('opacity', '1');
+        $id(this.settingsDivContainerId)
+            .css("display", "none")
+            .css('background', 'rgba(0,0,0,0.9)')
+            .css('width', '100%')
+            .css('height', '100%')
+            .css('z-index', '500')
+            .css('top', '0')
+            .css('left', '0')
+            .css('position', 'fixed');
     }
 
     getFilteringListHTML(type: FilteringType): string {
@@ -84,7 +100,7 @@ export class UIManager {
         // keyword list
         for (var i = 0; i < filteringList.length; i++) {
             var keyword = filteringList[i];
-            var keywordId = this.getId(ids.typeId, keyword);
+            var keywordId = this.getKeywordId(ids.typeId, keyword);
             result += '<button id="' + keywordId + '" type="button" style="' + cst.keywordTagStyle + '">' + keyword + '</button>';
         }
 
@@ -98,9 +114,20 @@ export class UIManager {
         return result;
     }
 
-    getSettingsBtnHTML(): string {
-        var settingsBtn = '<img id="' + this.settingsBtnId + '" class="pageAction requiresLogin" style="display: inline; width: 24px; height: 24px;" src="' + cst.filterIconLink + '" ' + cst.toggleSrcAttr + '="' + cst.closeIconLink + '" alt="icon"/>';
-        return settingsBtn;
+    initSettingsBtns() {
+        var this_ = this;
+        $(cst.settingsBtnPredecessorSelector).each(function(i, element) {
+            var clone = $(element).clone();
+            $(clone).attr('id', this_.getBtnId(element.id));
+            $(clone).attr('src', cst.filterIconLink);
+            $(clone).attr('alt', 'icon');
+            $(clone).attr('data-page-action', '');
+            $(element).after(clone);
+
+            $(clone).click(function () {
+                $id(this_.settingsDivContainerId).toggle();
+            });
+        });
     }
 
     setUpSettingsMenuEvents() {
@@ -109,8 +136,8 @@ export class UIManager {
         // Set checkbox & select boxes correct state
         var filteringCheck = $id(this.enableFilteringCheckId);
         var restrictingCheck = $id(this.enableRestrictingCheckId);
-        var sortingCheck = $id(cst.sortingEnabledId);
-        var sortingTypeSelect = $id(cst.sortingTypeId);
+        var sortingCheck = $id(this.sortingEnabledId);
+        var sortingTypeSelect = $id(this.sortingTypeId);
         filteringCheck.prop('checked', this.subscription.isFilteringEnabled());
         restrictingCheck.prop('checked', this.subscription.isRestrictingEnabled());
         sortingCheck.prop('checked', this.subscription.isSortingEnabled());
@@ -134,13 +161,9 @@ export class UIManager {
             this_.refreshTopics();
         });
 
-        // Setting button events
-        $id(this.settingsBtnId).click(function () {
-            var current = $(this).attr("src");
-            var swap = $(this).attr(cst.toggleSrcAttr);
-            $(this).attr('src', swap).attr(cst.toggleSrcAttr, current);
-            $id(this_.settingsDivId).toggle();
-        });
+        $id(this.closeBtnId).click(function() {
+            $id(this_.settingsDivContainerId).toggle();
+        })
 
         this.setUpFilteringListEvents();
     }
@@ -182,7 +205,7 @@ export class UIManager {
         // Keyword buttons events
         var t = this;
         for (var i = 0; i < keywordList.length; i++) {
-            var keywordId = this.getId(ids.typeId, keywordList[i]);
+            var keywordId = this.getKeywordId(ids.typeId, keywordList[i]);
             $id(keywordId).click(function () {
                 var keyword = $(this).text();
                 if (confirm("Delete the keyword ?")) {
@@ -201,7 +224,7 @@ export class UIManager {
         $(cst.topicSelector).toArray().forEach(this.topicManager.refreshTopic, this.topicManager);
     }
 
-    getId(keywordListId: string, keyword: string) {
+    getKeywordId(keywordListId: string, keyword: string) {
         if (!(keyword in this.keywordToId)) {
             var id = this.idCount++;
             this.keywordToId[keyword] = id;
@@ -209,7 +232,9 @@ export class UIManager {
         return keywordListId + "_" + this.keywordToId[keyword];
     }
 
-    initPage
+    getBtnId (elementId: string): string {
+        return this.settingsBtnId + "_" + elementId;
+    }
 
     refreshPage() {
         this.refreshSubscription()
