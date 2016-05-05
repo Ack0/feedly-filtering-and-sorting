@@ -1,7 +1,6 @@
 /// <reference path="./_references.d.ts" />
 
 import {DAO} from "./DAO";
-import * as NodeCreationObserver from "node-creation-observer";
 
 export enum FilteringType {
     RestrictedOn,

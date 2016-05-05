@@ -31,16 +31,11 @@ var exported = {};
 function $id(id) {
     return $('#' + id);
 }
-function insertIndex(element, i) {
-    // The elemen0t we want to swap with
-    var $target = element.parent().children().eq(i);
-    // Determine the direction of the appended index so we know what side to place it on
-    if (element.index() > i) {
-        $target.before(element);
-    }
-    else {
-        $target.after(element);
-    }
+function bindMarkup(html, bindings) {
+    bindings.forEach(function (binding) {
+        html = html.replace(new RegExp("\{\{" + binding.name + "\}\}", "g"), "" + binding.value);
+    });
+    return html;
 }
 function callbackBind(thisArg) {
     return (function (callback) {
@@ -198,7 +193,7 @@ var TopicManager = (function () {
                 this.titles.reverse();
             }
             var index = jQuery.inArray(title, this.titles);
-            insertIndex(topic, index);
+            this.insertIndex(topic, index);
         }
         else if (sortingType == SortingType.PopularityAsc || sortingType == SortingType.PopularityDesc) {
             var nbrRecommendationsStr = topic.find(cst.nbrRecommendationsSelector).text().trim();
@@ -217,7 +212,18 @@ var TopicManager = (function () {
                 return (b - a) * i;
             });
             index = this.nbrRecommendationsArray.lastIndexOf(nbrRecommendations);
-            insertIndex(topic, index);
+            this.insertIndex(topic, index);
+        }
+    };
+    TopicManager.prototype.insertIndex = function (element, i) {
+        // The elemen0t we want to swap with
+        var $target = element.parent().children().eq(i);
+        // Determine the direction of the appended index so we know what side to place it on
+        if (element.index() > i) {
+            $target.before(element);
+        }
+        else {
+            $target.after(element);
         }
     };
     return TopicManager;
@@ -235,6 +241,12 @@ var DAO = (function () {
     };
     return DAO;
 }());
+
+var templates = {
+    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin' style='float:right;display:inline-block;width: 24px; height: 24px;'> <span> <span class='FFnS_settings_span'>Filtering enabled</span> <input id='FFnS_enableFiltering' style='vertical-align: middle;' type='checkbox'> </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span'>Restricting enabled</span> <input id='FFnS_enableRestricting' style='vertical-align: middle;' type='checkbox'> </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_sortingEnabled' style='vertical-align: middle;' type='checkbox'> <select id='FFnS_sortingType' class='FFnS_margin_element' style='vertical-align: middle; font-size:12px;'> <option value='{{SortingType.PopularityDesc}}'>Sort by number of recommendations (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by number of recommendations (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering (Keywords the feeds must not contain)</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting (Keywords the the feeds must contain)</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} </div> </div> </div>",
+    "filteringListHTML": "<div id='{{FilteringTypeTabId}}' class='FFnS_FilteringList'> <span id='{{plusBtnId}}'> <img src='{{plusIconLink}}' class='FFnS_icon' /> </span> <span id='{{eraseBtnId}}'> <img src='{{eraseIconLink}}' class='FFnS_icon' /> </span> {{filetring.keywords}} </div> ",
+    "filteringKeywordHTML": "<button id='{{keywordId}}' type='button' class='FFnS_keyword'>{{keyword}}</button>"
+};
 
 var UIManager = (function () {
     function UIManager() {
@@ -259,44 +271,16 @@ var UIManager = (function () {
         var marginElementClass = this.getHTMLId("margin_element");
         var tabsMenuId = this.getHTMLId("tabs_menu");
         var tabsContentContainerId = this.getHTMLId("tabs_content");
-        var settingsDiv = '<div id="' + this.settingsDivContainerId + '" >' +
-            '<div id="' + this.settingsDivId + '" >' +
-            // Close btn
-            '<img id="' + this.closeBtnId + '" src="' + cst.closeIconLink + '" style="float:right;display:inline-block;width: 24px; height: 24px;" class="pageAction requiresLogin"/>' +
-            // Checkbox to enable filtering
-            '<span>' +
-            '<span class="FFnS_settings_span">Filtering enabled</span>' +
-            '<input id="' + this.enableFilteringCheckId + '" type="checkbox" style="vertical-align: middle;">' +
-            '</span>' +
-            // Checkbox to enable restricting
-            '<span class="' + marginElementClass + '">' +
-            '<span class="FFnS_settings_span">Restricting enabled</span>' +
-            '<input id="' + this.enableRestrictingCheckId + '" type="checkbox" style="vertical-align: middle;">' +
-            '</span>' +
-            // Checkbox to enable sorting
-            '<span class="' + marginElementClass + '">' +
-            '<span class="FFnS_settings_span">Sorting enabled</span>' +
-            '<input id="' + this.sortingEnabledId + '" type="checkbox" style="vertical-align: middle;">' +
-            // Combo box sorting type
-            '<select id=' + this.sortingTypeId + ' class="' + marginElementClass + '" style="vertical-align: middle; font-size:12px;">' +
-            '<option value="' + SortingType.PopularityDesc + '">Sort by number of recommendations (highest to lowest)</option>' +
-            '<option value="' + SortingType.TitleAsc + '">Sort by title (a -> z)</option>' +
-            '<option value="' + SortingType.PopularityAsc + '">Sort by number of recommendations (lowest to highest)</option>' +
-            '<option value="' + SortingType.TitleDesc + '">Sort by title (z -> a)</option>' +
-            '</select>' +
-            '</span>' +
-            // Filtering tabs
-            '<ul id="' + tabsMenuId + '">' +
-            '<li class="current"><a href="#' + this.getFilteringTypeTabId(FilteringType.FilteredOut) + '">Filtering (Keywords the feeds must not contain)</a></li>' +
-            '<li><a href="#' + this.getFilteringTypeTabId(FilteringType.RestrictedOn) + '">Restricting (Keywords the the feeds must contain)</a></li>' +
-            '</ul>' +
-            '<div id="' + tabsContentContainerId + '">' +
-            this.getFilteringListHTML(FilteringType.FilteredOut) +
-            this.getFilteringListHTML(FilteringType.RestrictedOn) +
-            '</div>' +
-            '</div>' +
-            '</div>';
-        $("body").prepend(settingsDiv);
+        var settingsHtml = bindMarkup(templates.settingsHTML, [
+            { name: "closeIconLink", value: cst.closeIconLink },
+            { name: "SortingType.PopularityDesc", value: SortingType.PopularityDesc },
+            { name: "SortingType.TitleAsc", value: SortingType.TitleAsc },
+            { name: "SortingType.PopularityAsc", value: SortingType.PopularityAsc },
+            { name: "SortingType.TitleDesc", value: SortingType.TitleDesc },
+            { name: "FilteringList.Type.FilteredOut", value: this.getFilteringListHTML(FilteringType.FilteredOut) },
+            { name: "FilteringList.Type.RestrictedOn", value: this.getFilteringListHTML(FilteringType.RestrictedOn) }
+        ]);
+        $("body").prepend(settingsHtml);
         // set up tabs
         $("#" + tabsMenuId + " a").click(function (event) {
             event.preventDefault();
@@ -311,19 +295,25 @@ var UIManager = (function () {
     UIManager.prototype.getFilteringListHTML = function (type) {
         var ids = this.subscription.getIds(type);
         var filteringList = this.subscription.getFilteringList(type);
-        // plus button
-        var result = '<div id="' + this.getFilteringTypeTabId(type) + '" class="FFnS_FilteringList">' +
-            '<span id="' + this.getHTMLId(ids.plusBtnId) + '" > <img src="' + cst.plusIconLink + '" class="FFnS_icon" /></span>';
-        // Erase button
-        result += '<span id="' + this.getHTMLId(ids.eraseBtnId) + '" > <img src="' + cst.eraseIconLink + '" class="FFnS_icon" /></span>';
-        // keyword list
+        var filteringKeywordsHTML = "";
         for (var i = 0; i < filteringList.length; i++) {
             var keyword = filteringList[i];
             var keywordId = this.getKeywordId(ids.typeId, keyword);
-            result += '<button id="' + keywordId + '" type="button" class="FFnS_keyword">' + keyword + '</button>';
+            var filteringKeywordHTML = bindMarkup(templates.filteringKeywordHTML, [
+                { name: "keywordId", value: keywordId },
+                { name: "keyword", value: keyword }
+            ]);
+            filteringKeywordsHTML += filteringKeywordHTML;
         }
-        result += "</div>";
-        return result;
+        var filteringListHTML = bindMarkup(templates.filteringListHTML, [
+            { name: "FilteringTypeTabId", value: this.getFilteringTypeTabId(type) },
+            { name: "plusBtnId", value: this.getHTMLId(ids.plusBtnId) },
+            { name: "plusIconLink", value: cst.plusIconLink },
+            { name: "eraseBtnId", value: this.getHTMLId(ids.eraseBtnId) },
+            { name: "eraseIconLink", value: cst.eraseIconLink },
+            { name: "filetring.keywords", value: filteringKeywordsHTML }
+        ]);
+        return filteringListHTML;
     };
     UIManager.prototype.initSettingsBtns = function () {
         var this_ = this;

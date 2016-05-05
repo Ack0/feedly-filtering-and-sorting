@@ -2,7 +2,6 @@
 
 import * as cst from "constants";
 import {Subscription, SortingType, FilteringType} from "./Subscription";
-import {insertIndex} from "./Utils";
 
 export class TopicManager {
     titles = [];
@@ -66,7 +65,7 @@ export class TopicManager {
                 this.titles.reverse();
             }
             var index = jQuery.inArray(title, this.titles);
-            insertIndex(topic, index);
+            this.insertIndex(topic, index);
         }
         else if (sortingType == SortingType.PopularityAsc || sortingType == SortingType.PopularityDesc) {
             var nbrRecommendationsStr = topic.find(cst.nbrRecommendationsSelector).text().trim();
@@ -85,7 +84,19 @@ export class TopicManager {
                 return (b - a) * i;
             });
             index = this.nbrRecommendationsArray.lastIndexOf(nbrRecommendations);
-            insertIndex(topic, index);
+            this.insertIndex(topic, index);
+        }
+    }
+    
+    insertIndex(element: JQuery, i: number) {
+        // The elemen0t we want to swap with
+        var $target = element.parent().children().eq(i);
+
+        // Determine the direction of the appended index so we know what side to place it on
+        if (element.index() > i) {
+            $target.before(element);
+        } else {
+            $target.after(element);
         }
     }
 }

@@ -3,7 +3,7 @@
 import * as cst from "constants";
 import {Subscription, FilteringType, SortingType} from "./Subscription";
 import {TopicManager} from "./TopicManager";
-import {$id} from "./Utils";
+import {$id, bindMarkup} from "./Utils";
 
 export class UIManager {
     topicManager: TopicManager = new TopicManager();
@@ -31,55 +31,20 @@ export class UIManager {
         var marginElementClass = this.getHTMLId("margin_element");
         var tabsMenuId = this.getHTMLId("tabs_menu");
         var tabsContentContainerId = this.getHTMLId("tabs_content");
-        var settingsDiv =
-            '<div id="' + this.settingsDivContainerId + '" >' +
-            '<div id="' + this.settingsDivId + '" >' +
 
-            // Close btn
-            '<img id="' + this.closeBtnId + '" src="' + cst.closeIconLink + '" style="float:right;display:inline-block;width: 24px; height: 24px;" class="pageAction requiresLogin"/>' +
-
-            // Checkbox to enable filtering
-            '<span>' +
-            '<span class="FFnS_settings_span">Filtering enabled</span>' +
-            '<input id="' + this.enableFilteringCheckId + '" type="checkbox" style="vertical-align: middle;">' +
-            '</span>' +
-
-            // Checkbox to enable restricting
-            '<span class="' + marginElementClass + '">' +
-            '<span class="FFnS_settings_span">Restricting enabled</span>' +
-            '<input id="' + this.enableRestrictingCheckId + '" type="checkbox" style="vertical-align: middle;">' +
-            '</span>' +
-
-            // Checkbox to enable sorting
-            '<span class="' + marginElementClass + '">' +
-            '<span class="FFnS_settings_span">Sorting enabled</span>' +
-            '<input id="' + this.sortingEnabledId + '" type="checkbox" style="vertical-align: middle;">' +
-
-            // Combo box sorting type
-            '<select id=' + this.sortingTypeId + ' class="' + marginElementClass + '" style="vertical-align: middle; font-size:12px;">' +
-            '<option value="' + SortingType.PopularityDesc + '">Sort by number of recommendations (highest to lowest)</option>' +
-            '<option value="' + SortingType.TitleAsc + '">Sort by title (a -> z)</option>' +
-            '<option value="' + SortingType.PopularityAsc + '">Sort by number of recommendations (lowest to highest)</option>' +
-            '<option value="' + SortingType.TitleDesc + '">Sort by title (z -> a)</option>' +
-            '</select>' +
-            '</span>' +
-
-            // Filtering tabs
-            '<ul id="' + tabsMenuId + '">' +
-                '<li class="current"><a href="#' + this.getFilteringTypeTabId(FilteringType.FilteredOut) + '">Filtering (Keywords the feeds must not contain)</a></li>' +
-                '<li><a href="#' + this.getFilteringTypeTabId(FilteringType.RestrictedOn) + '">Restricting (Keywords the the feeds must contain)</a></li>' +
-            '</ul>' +
-            '<div id="' + tabsContentContainerId + '">' +
-            this.getFilteringListHTML(FilteringType.FilteredOut) +
-            this.getFilteringListHTML(FilteringType.RestrictedOn) +
-            '</div>' +
-
-            '</div>' +
-            '</div>';
-        $("body").prepend(settingsDiv);
+        var settingsHtml = bindMarkup(templates.settingsHTML, [
+            { name: "closeIconLink", value: cst.closeIconLink },
+            { name: "SortingType.PopularityDesc", value: SortingType.PopularityDesc },
+            { name: "SortingType.TitleAsc", value: SortingType.TitleAsc },
+            { name: "SortingType.PopularityAsc", value: SortingType.PopularityAsc },
+            { name: "SortingType.TitleDesc", value: SortingType.TitleDesc },
+            { name: "FilteringList.Type.FilteredOut", value: this.getFilteringListHTML(FilteringType.FilteredOut) },
+            { name: "FilteringList.Type.RestrictedOn", value: this.getFilteringListHTML(FilteringType.RestrictedOn) }
+        ]);
+        $("body").prepend(settingsHtml);
 
         // set up tabs
-        $("#" + tabsMenuId + " a").click(function(event) {
+        $("#" + tabsMenuId + " a").click(function (event) {
             event.preventDefault();
             $(this).parent().addClass("current");
             $(this).parent().siblings().removeClass("current");
@@ -93,28 +58,32 @@ export class UIManager {
     getFilteringListHTML(type: FilteringType): string {
         var ids = this.subscription.getIds(type);
         var filteringList = this.subscription.getFilteringList(type);
-
-        // plus button
-        var result = '<div id="' + this.getFilteringTypeTabId(type) + '" class="FFnS_FilteringList">' +
-        '<span id="' + this.getHTMLId(ids.plusBtnId) + '" > <img src="' + cst.plusIconLink + '" class="FFnS_icon" /></span>';
-
-        // Erase button
-        result += '<span id="' + this.getHTMLId(ids.eraseBtnId) + '" > <img src="' + cst.eraseIconLink + '" class="FFnS_icon" /></span>';
-
-        // keyword list
+        
+        var filteringKeywordsHTML = "";
         for (var i = 0; i < filteringList.length; i++) {
             var keyword = filteringList[i];
             var keywordId = this.getKeywordId(ids.typeId, keyword);
-            result += '<button id="' + keywordId + '" type="button" class="FFnS_keyword">' + keyword + '</button>';
+            var filteringKeywordHTML = bindMarkup(templates.filteringKeywordHTML, [
+                { name: "keywordId", value: keywordId },
+                { name: "keyword", value: keyword }
+            ]);
+            filteringKeywordsHTML += filteringKeywordHTML;
         }
-
-        result += "</div>";
-        return result;
+        
+        var filteringListHTML = bindMarkup(templates.filteringListHTML, [
+            { name: "FilteringTypeTabId", value: this.getFilteringTypeTabId(type) },
+            { name: "plusBtnId", value: this.getHTMLId(ids.plusBtnId) },
+            { name: "plusIconLink", value: cst.plusIconLink },
+            { name: "eraseBtnId", value: this.getHTMLId(ids.eraseBtnId) },
+            { name: "eraseIconLink", value: cst.eraseIconLink },
+            { name: "filetring.keywords", value: filteringKeywordsHTML }
+        ]);
+        return filteringListHTML;
     }
 
     initSettingsBtns() {
         var this_ = this;
-        $(cst.settingsBtnPredecessorSelector).each(function(i, element) {
+        $(cst.settingsBtnPredecessorSelector).each(function (i, element) {
             var clone = $(element).clone();
             $(clone).attr('id', this_.getBtnId(element.id));
             $(clone).attr('src', cst.filterIconLink);
@@ -159,7 +128,7 @@ export class UIManager {
             this_.refreshTopics();
         });
 
-        $id(this.closeBtnId).click(function() {
+        $id(this.closeBtnId).click(function () {
             $id(this_.settingsDivContainerId).toggle();
         })
 
@@ -235,7 +204,7 @@ export class UIManager {
         return this.getHTMLId(keywordListId + "_" + this.keywordToId[keyword]);
     }
 
-    getBtnId (elementId: string): string {
+    getBtnId(elementId: string): string {
         return this.getHTMLId(this.settingsBtnId + "_" + elementId);
     }
 

@@ -9,6 +9,16 @@ module.exports = function(grunt) {
     var style = grunt.file.read("resources/style.css").replace(/\s+/g, ' ');
     var styleInjector = '$("head").append("<style>' + style + '</style>");';
 
+    var templates = grunt.file.readJSON('templates.json');
+    var replacements = [];
+    templates.forEach((template) => {
+        var templateString = grunt.file.read(template.file).replace(/\s+/g, ' ').replace(/"/g, "'");
+        var replacement = {};
+        replacement.pattern = new RegExp('("' + template.name + '"\s*:)[^,\r\n]+', 'i');
+        replacement.replacement = '$1 "' + templateString + '"';
+        replacements.push(replacement);
+    });
+
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
         deploy: grunt.file.isFile('deploy.json') ? grunt.file.readJSON('deploy.json') : { path: "" },
@@ -67,6 +77,12 @@ module.exports = function(grunt) {
                         }
                     ]
                 }
+            },
+            'templates': {
+                files: [{src: 'target/Templates.js', dest: 'target/Templates.js'}],
+                options: {
+                    replacements: replacements
+                }
             }
         },
         concat: {
@@ -104,5 +120,5 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-file-append');
 
-    grunt.registerTask('default', ['ts', 'string-replace:ts', 'concat:script', 'file_append:style', 'copy:deploy']);
+    grunt.registerTask('default', ['ts', 'string-replace:ts', 'string-replace:templates', 'concat:script', 'file_append:style', 'copy:deploy']);
 };

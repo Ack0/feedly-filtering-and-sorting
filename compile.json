@@ -5,6 +5,7 @@
         "Subscription",
         "TopicManager",
         "DAO",
+        "Templates",
         "UIManager",
         "Main"
     ]

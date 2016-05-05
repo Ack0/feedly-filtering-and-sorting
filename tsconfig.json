@@ -9,14 +9,15 @@
         "src/*.ts"
     ],
     "files": [
-        "src/_references.d.ts",
         "src/Constants.ts",
         "src/DAO.ts",
         "src/Main.ts",
         "src/Subscription.ts",
+        "src/Templates.ts",
         "src/TopicManager.ts",
         "src/UIManager.ts",
-        "src/Utils.ts"
+        "src/Utils.ts",
+        "src/_references.d.ts"
     ],
     "atom": {
         "rewriteTsconfig": true

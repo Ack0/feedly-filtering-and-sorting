@@ -4,16 +4,15 @@ export function $id(id) {
     return $('#' + id);
 }
 
-export function insertIndex(element: JQuery, i: number) {
-    // The elemen0t we want to swap with
-    var $target = element.parent().children().eq(i);
+interface MarkupBinding {
+    name: string, value: any
+}
 
-    // Determine the direction of the appended index so we know what side to place it on
-    if (element.index() > i) {
-        $target.before(element);
-    } else {
-        $target.after(element);
-    }
+export function bindMarkup(html: string, bindings: MarkupBinding[]): string {
+    bindings.forEach(binding => {
+        html = html.replace(new RegExp("\{\{" + binding.name + "\}\}", "g"), "" + binding.value);
+    });
+    return html;
 }
 
 export function callbackBind(thisArg: any): (callback: (...args: any[]) => any) => any {

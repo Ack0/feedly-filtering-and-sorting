@@ -1,0 +1,38 @@
+<div id="FFnS_settingsDivContainer">
+    <div id="FFnS_settingsDiv">
+        <img id="FFnS_CloseSettingsBtn" src="{{closeIconLink}}" class="pageAction requiresLogin" style="float:right;display:inline-block;width: 24px; height: 24px;">
+        <span>
+            <span class="FFnS_settings_span">Filtering enabled</span>
+            <input id="FFnS_enableFiltering" style="vertical-align: middle;" type="checkbox">
+        </span>        
+        <span class="FFnS_margin_element">
+            <span class="FFnS_settings_span">Restricting enabled</span>
+            <input id="FFnS_enableRestricting" style="vertical-align: middle;" type="checkbox">
+        </span>
+        
+        <span class="FFnS_margin_element">
+            <span class="FFnS_settings_span">Sorting enabled</span>
+            <input id="FFnS_sortingEnabled" style="vertical-align: middle;" type="checkbox">
+            <select id="FFnS_sortingType" class="FFnS_margin_element" style="vertical-align: middle; font-size:12px;">
+                <option value="{{SortingType.PopularityDesc}}">Sort by number of recommendations (highest to lowest)</option>
+                <option value="{{SortingType.TitleAsc}}">Sort by title (a -&gt; z)</option>
+                <option value="{{SortingType.PopularityAsc}}">Sort by number of recommendations (lowest to highest)</option>
+                <option value="{{SortingType.TitleDesc}}">Sort by title (z -&gt; a)</option>
+            </select>
+        </span>
+        
+        <ul id="FFnS_tabs_menu">
+            <li class="current">
+                <a href="#FFnS_tab_FilteredOut">Filtering (Keywords the feeds must not contain)</a>
+            </li>
+            <li class="">
+                <a href="#FFnS_tab_RestrictedOn">Restricting (Keywords the the feeds must contain)</a>
+            </li>
+        </ul>
+                
+        <div id="FFnS_tabs_content">
+            {{FilteringList.Type.FilteredOut}}
+            {{FilteringList.Type.RestrictedOn}}
+        </div>
+    </div>
+</div>

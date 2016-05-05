@@ -1,7 +1,6 @@
 /// <reference path="./_references.d.ts" />
 
 import * as cst from "constants";
-import {Subscription} from "./Subscription";
 import {UIManager} from "./UIManager";
 import {callbackBind} from "./Utils";
 
