@@ -25,9 +25,6 @@ var cst = {
     "pageChangeSelector": "h1#feedlyTitleBar > .hhint",
     "topicTitleAttribute": "data-title",
     "nbrRecommendationsSelector": ".nbrRecommendations",
-    "keywordTagStyle": "vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer;",
-    "iconStyle": "vertical-align: middle; height: 20px; width: 20px; cursor: pointer;",
-    "settingsDivSpanStyle": "style='display: inline; vertical-align: middle;'"
 };
 
 var exported = {};
@@ -242,14 +239,16 @@ var DAO = (function () {
 var UIManager = (function () {
     function UIManager() {
         this.topicManager = new TopicManager();
-        this.settingsBtnId = "settingsBtn";
-        this.settingsDivContainerId = "settingsDivContainer";
-        this.closeBtnId = "CloseSettingsBtn";
-        this.enableFilteringCheckId = "enableFiltering";
-        this.enableRestrictingCheckId = "enableRestricting";
-        this.sortingTypeId = "sortingType";
         this.keywordToId = {};
         this.idCount = 1;
+        this.settingsDivId = this.getHTMLId("settingsDiv");
+        this.settingsBtnId = this.getHTMLId("settingsBtn");
+        this.settingsDivContainerId = this.getHTMLId("settingsDivContainer");
+        this.closeBtnId = this.getHTMLId("CloseSettingsBtn");
+        this.enableFilteringCheckId = this.getHTMLId("enableFiltering");
+        this.enableRestrictingCheckId = this.getHTMLId("enableRestricting");
+        this.sortingTypeId = this.getHTMLId("sortingType");
+        this.sortingEnabledId = this.getHTMLId("sortingEnabled");
     }
     UIManager.prototype.setUpSettingsMenu = function () {
         this.initSettingsMenu();
@@ -257,78 +256,73 @@ var UIManager = (function () {
         this.setUpSettingsMenuEvents();
     };
     UIManager.prototype.initSettingsMenu = function () {
-        var settingsDivId = "settingsDiv";
+        var marginElementClass = this.getHTMLId("margin_element");
+        var tabsMenuId = this.getHTMLId("tabs_menu");
+        var tabsContentContainerId = this.getHTMLId("tabs_content");
         var settingsDiv = '<div id="' + this.settingsDivContainerId + '" >' +
-            '<div id="' + settingsDivId + '" >' +
-            '<div>' +
+            '<div id="' + this.settingsDivId + '" >' +
             // Close btn
             '<img id="' + this.closeBtnId + '" src="' + cst.closeIconLink + '" style="float:right;display:inline-block;width: 24px; height: 24px;" class="pageAction requiresLogin"/>' +
             // Checkbox to enable filtering
-            '<div>' +
-            '<span ' + cst.settingsDivSpanStyle + '>Filtering enabled</span>' +
+            '<span>' +
+            '<span class="FFnS_settings_span">Filtering enabled</span>' +
             '<input id="' + this.enableFilteringCheckId + '" type="checkbox" style="vertical-align: middle;">' +
-            '</div>' +
+            '</span>' +
             // Checkbox to enable restricting
-            '<div>' +
-            '<span ' + cst.settingsDivSpanStyle + '>Restricting enabled</span>' +
+            '<span class="' + marginElementClass + '">' +
+            '<span class="FFnS_settings_span">Restricting enabled</span>' +
             '<input id="' + this.enableRestrictingCheckId + '" type="checkbox" style="vertical-align: middle;">' +
-            '</div>' +
+            '</span>' +
             // Checkbox to enable sorting
-            '<div>' +
-            '<span ' + cst.settingsDivSpanStyle + '>Sorting enabled</span>' +
+            '<span class="' + marginElementClass + '">' +
+            '<span class="FFnS_settings_span">Sorting enabled</span>' +
             '<input id="' + this.sortingEnabledId + '" type="checkbox" style="vertical-align: middle;">' +
-            '<select id=' + this.sortingTypeId + '>' +
+            // Combo box sorting type
+            '<select id=' + this.sortingTypeId + ' class="' + marginElementClass + '" style="vertical-align: middle; font-size:12px;">' +
             '<option value="' + SortingType.PopularityDesc + '">Sort by number of recommendations (highest to lowest)</option>' +
             '<option value="' + SortingType.TitleAsc + '">Sort by title (a -> z)</option>' +
             '<option value="' + SortingType.PopularityAsc + '">Sort by number of recommendations (lowest to highest)</option>' +
             '<option value="' + SortingType.TitleDesc + '">Sort by title (z -> a)</option>' +
             '</select>' +
-            '</div>' +
-            // Restricted on keyword list
-            '<div>' +
-            '<span ' + cst.settingsDivSpanStyle + '>Restricted on keyword list: </span>' +
-            this.getFilteringListHTML(FilteringType.RestrictedOn) +
-            '</div>' +
-            // Filtered out keyword list
-            '<div>' +
-            '<span ' + cst.settingsDivSpanStyle + '>Filtered out keyword list: </span>' +
+            '</span>' +
+            // Filtering tabs
+            '<ul id="' + tabsMenuId + '">' +
+            '<li class="current"><a href="#' + this.getFilteringTypeTabId(FilteringType.FilteredOut) + '">Filtering (Keywords the feeds must not contain)</a></li>' +
+            '<li><a href="#' + this.getFilteringTypeTabId(FilteringType.RestrictedOn) + '">Restricting (Keywords the the feeds must contain)</a></li>' +
+            '</ul>' +
+            '<div id="' + tabsContentContainerId + '">' +
             this.getFilteringListHTML(FilteringType.FilteredOut) +
+            this.getFilteringListHTML(FilteringType.RestrictedOn) +
             '</div>' +
             '</div>' +
             '</div>';
         $("body").prepend(settingsDiv);
-        $id(settingsDivId)
-            .css('margin', '25px')
-            .css('border-radius', '25px')
-            .css('border', '2px solid #336699')
-            .css('background', '#E0F5FF')
-            .css('padding', '20px')
-            .css('opacity', '1');
-        $id(this.settingsDivContainerId)
-            .css("display", "none")
-            .css('background', 'rgba(0,0,0,0.9)')
-            .css('width', '100%')
-            .css('height', '100%')
-            .css('z-index', '500')
-            .css('top', '0')
-            .css('left', '0')
-            .css('position', 'fixed');
+        // set up tabs
+        $("#" + tabsMenuId + " a").click(function (event) {
+            event.preventDefault();
+            $(this).parent().addClass("current");
+            $(this).parent().siblings().removeClass("current");
+            var tab = $(this).attr("href");
+            $("#" + tabsContentContainerId + " > div").not(tab).css("display", "none");
+            $(tab).show();
+        });
+        var firstDiv = $("#" + tabsContentContainerId + " > div").first().show();
     };
     UIManager.prototype.getFilteringListHTML = function (type) {
         var ids = this.subscription.getIds(type);
         var filteringList = this.subscription.getFilteringList(type);
-        var result = "<span id=" + ids.typeId + ">";
+        // plus button
+        var result = '<div id="' + this.getFilteringTypeTabId(type) + '" class="FFnS_FilteringList">' +
+            '<span id="' + this.getHTMLId(ids.plusBtnId) + '" > <img src="' + cst.plusIconLink + '" class="FFnS_icon" /></span>';
+        // Erase button
+        result += '<span id="' + this.getHTMLId(ids.eraseBtnId) + '" > <img src="' + cst.eraseIconLink + '" class="FFnS_icon" /></span>';
         // keyword list
         for (var i = 0; i < filteringList.length; i++) {
             var keyword = filteringList[i];
             var keywordId = this.getKeywordId(ids.typeId, keyword);
-            result += '<button id="' + keywordId + '" type="button" style="' + cst.keywordTagStyle + '">' + keyword + '</button>';
+            result += '<button id="' + keywordId + '" type="button" class="FFnS_keyword">' + keyword + '</button>';
         }
-        // plus button
-        result += '<span id="' + ids.plusBtnId + '" > <img src="' + cst.plusIconLink + '" style="' + cst.iconStyle + '" /></span>';
-        // Erase button
-        result += '<span id="' + ids.eraseBtnId + '" > <img src="' + cst.eraseIconLink + '" style="' + cst.iconStyle + '" /></span>';
-        result += "</span>";
+        result += "</div>";
         return result;
     };
     UIManager.prototype.initSettingsBtns = function () {
@@ -381,7 +375,8 @@ var UIManager = (function () {
     UIManager.prototype.refreshFilteringList = function (type) {
         var keywordListHtml = this.getFilteringListHTML(type);
         var keywordListId = this.subscription.getIds(type).typeId;
-        $id(keywordListId).replaceWith(keywordListHtml);
+        $id(this.getFilteringTypeTabId(type)).replaceWith(keywordListHtml);
+        $id(this.getFilteringTypeTabId(type)).show();
         this.refreshTopics();
         this.subscription.save(type);
         this.setUpFilteringListEvents();
@@ -393,7 +388,7 @@ var UIManager = (function () {
         var _this = this;
         var ids = this.subscription.getIds(type);
         var keywordList = this.subscription.getFilteringList(type);
-        $id(ids.plusBtnId).click(function () {
+        $id(this.getHTMLId(ids.plusBtnId)).click(function () {
             var keyword = prompt("Add keyword", "");
             if (keyword !== null) {
                 keywordList.push(keyword);
@@ -401,7 +396,7 @@ var UIManager = (function () {
             }
         });
         // Erase button event
-        $id(ids.eraseBtnId).click(function () {
+        $id(this.getHTMLId(ids.eraseBtnId)).click(function () {
             if (confirm("Erase all the keyword of this list ?")) {
                 keywordList.length = 0;
                 _this.refreshFilteringList(type);
@@ -427,15 +422,21 @@ var UIManager = (function () {
         this.topicManager.resetSorting();
         $(cst.topicSelector).toArray().forEach(this.topicManager.refreshTopic, this.topicManager);
     };
+    UIManager.prototype.getHTMLId = function (id) {
+        return "FFnS_" + id;
+    };
     UIManager.prototype.getKeywordId = function (keywordListId, keyword) {
         if (!(keyword in this.keywordToId)) {
             var id = this.idCount++;
             this.keywordToId[keyword] = id;
         }
-        return keywordListId + "_" + this.keywordToId[keyword];
+        return this.getHTMLId(keywordListId + "_" + this.keywordToId[keyword]);
     };
     UIManager.prototype.getBtnId = function (elementId) {
-        return this.settingsBtnId + "_" + elementId;
+        return this.getHTMLId(this.settingsBtnId + "_" + elementId);
+    };
+    UIManager.prototype.getFilteringTypeTabId = function (filteringType) {
+        return this.getHTMLId("tab_" + FilteringType[filteringType]);
     };
     UIManager.prototype.refreshPage = function () {
         this.refreshSubscription();
@@ -469,3 +470,4 @@ $(document).ready(function () {
         NodeCreationObserver.onCreation(cst.pageChangeSelector, uiManagerBind(uiManager.refreshPage));
     }, true);
 });
+$("head").append("<style>#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 200px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } #FFnS_tabs_menu { height: 30px; clear: both; margin: 0px; padding: 0px; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_margin_element { margin-left: 2% } .FFnS_FilteringList { display: none; width: 100%; max-height: 140px; overflow-y: auto; overflow-x: hidden; } .FFnS_settings_span { display: inline; vertical-align: middle; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } </style>");

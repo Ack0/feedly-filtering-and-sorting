@@ -9,10 +9,6 @@ var cst = {
 	"pageChangeSelector": "h1#feedlyTitleBar > .hhint",
 	"topicTitleAttribute": "data-title",
 	"nbrRecommendationsSelector": ".nbrRecommendations",
-
-	"keywordTagStyle": "vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer;",
-	"iconStyle": "vertical-align: middle; height: 20px; width: 20px; cursor: pointer;",
-	"settingsDivSpanStyle": "style='display: inline; vertical-align: middle;'"
 }
 
 declare module "constants" {

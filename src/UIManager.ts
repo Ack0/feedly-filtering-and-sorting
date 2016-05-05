@@ -8,15 +8,18 @@ import {$id} from "./Utils";
 export class UIManager {
     topicManager: TopicManager = new TopicManager();
     private subscription: Subscription;
-    settingsBtnId = "settingsBtn";
-    settingsDivContainerId = "settingsDivContainer";
-    closeBtnId = "CloseSettingsBtn";
-    enableFilteringCheckId = "enableFiltering";
-    enableRestrictingCheckId = "enableRestricting";
-    sortingTypeId = "sortingType";
-    sortingEnabledId: "sortingEnabled";
+
     keywordToId = {};
     idCount = 1;
+
+    settingsDivId = this.getHTMLId("settingsDiv");
+    settingsBtnId = this.getHTMLId("settingsBtn");
+    settingsDivContainerId = this.getHTMLId("settingsDivContainer");
+    closeBtnId = this.getHTMLId("CloseSettingsBtn");
+    enableFilteringCheckId = this.getHTMLId("enableFiltering");
+    enableRestrictingCheckId = this.getHTMLId("enableRestricting");
+    sortingTypeId = this.getHTMLId("sortingType");
+    sortingEnabledId = this.getHTMLId("sortingEnabled");
 
     setUpSettingsMenu() {
         this.initSettingsMenu();
@@ -25,92 +28,87 @@ export class UIManager {
     }
 
     initSettingsMenu() {
-        var settingsDivId = "settingsDiv";
+        var marginElementClass = this.getHTMLId("margin_element");
+        var tabsMenuId = this.getHTMLId("tabs_menu");
+        var tabsContentContainerId = this.getHTMLId("tabs_content");
         var settingsDiv =
             '<div id="' + this.settingsDivContainerId + '" >' +
-            '<div id="' + settingsDivId + '" >' +
+            '<div id="' + this.settingsDivId + '" >' +
 
-            '<div>' +
             // Close btn
             '<img id="' + this.closeBtnId + '" src="' + cst.closeIconLink + '" style="float:right;display:inline-block;width: 24px; height: 24px;" class="pageAction requiresLogin"/>' +
 
             // Checkbox to enable filtering
-            '<div>' +
-            '<span ' + cst.settingsDivSpanStyle + '>Filtering enabled</span>' +
+            '<span>' +
+            '<span class="FFnS_settings_span">Filtering enabled</span>' +
             '<input id="' + this.enableFilteringCheckId + '" type="checkbox" style="vertical-align: middle;">' +
-            '</div>' +
+            '</span>' +
 
             // Checkbox to enable restricting
-            '<div>' +
-            '<span ' + cst.settingsDivSpanStyle + '>Restricting enabled</span>' +
+            '<span class="' + marginElementClass + '">' +
+            '<span class="FFnS_settings_span">Restricting enabled</span>' +
             '<input id="' + this.enableRestrictingCheckId + '" type="checkbox" style="vertical-align: middle;">' +
-            '</div>' +
+            '</span>' +
 
             // Checkbox to enable sorting
-            '<div>' +
-            '<span ' + cst.settingsDivSpanStyle + '>Sorting enabled</span>' +
+            '<span class="' + marginElementClass + '">' +
+            '<span class="FFnS_settings_span">Sorting enabled</span>' +
             '<input id="' + this.sortingEnabledId + '" type="checkbox" style="vertical-align: middle;">' +
-            '<select id=' + this.sortingTypeId + '>' +
+
+            // Combo box sorting type
+            '<select id=' + this.sortingTypeId + ' class="' + marginElementClass + '" style="vertical-align: middle; font-size:12px;">' +
             '<option value="' + SortingType.PopularityDesc + '">Sort by number of recommendations (highest to lowest)</option>' +
             '<option value="' + SortingType.TitleAsc + '">Sort by title (a -> z)</option>' +
             '<option value="' + SortingType.PopularityAsc + '">Sort by number of recommendations (lowest to highest)</option>' +
             '<option value="' + SortingType.TitleDesc + '">Sort by title (z -> a)</option>' +
             '</select>' +
-            '</div>' +
+            '</span>' +
 
-            // Restricted on keyword list
-            '<div>' +
-            '<span ' + cst.settingsDivSpanStyle + '>Restricted on keyword list: </span>' +
-            this.getFilteringListHTML(FilteringType.RestrictedOn) +
-            '</div>' +
-
-            // Filtered out keyword list
-            '<div>' +
-            '<span ' + cst.settingsDivSpanStyle + '>Filtered out keyword list: </span>' +
+            // Filtering tabs
+            '<ul id="' + tabsMenuId + '">' +
+                '<li class="current"><a href="#' + this.getFilteringTypeTabId(FilteringType.FilteredOut) + '">Filtering (Keywords the feeds must not contain)</a></li>' +
+                '<li><a href="#' + this.getFilteringTypeTabId(FilteringType.RestrictedOn) + '">Restricting (Keywords the the feeds must contain)</a></li>' +
+            '</ul>' +
+            '<div id="' + tabsContentContainerId + '">' +
             this.getFilteringListHTML(FilteringType.FilteredOut) +
+            this.getFilteringListHTML(FilteringType.RestrictedOn) +
             '</div>' +
 
             '</div>' +
             '</div>';
         $("body").prepend(settingsDiv);
-        $id(settingsDivId)
-            .css('margin', '25px')
-            .css('border-radius', '25px')
-            .css('border', '2px solid #336699')
-            .css('background', '#E0F5FF')
-            .css('padding', '20px')
-            .css('opacity', '1');
-        $id(this.settingsDivContainerId)
-            .css("display", "none")
-            .css('background', 'rgba(0,0,0,0.9)')
-            .css('width', '100%')
-            .css('height', '100%')
-            .css('z-index', '500')
-            .css('top', '0')
-            .css('left', '0')
-            .css('position', 'fixed');
+
+        // set up tabs
+        $("#" + tabsMenuId + " a").click(function(event) {
+            event.preventDefault();
+            $(this).parent().addClass("current");
+            $(this).parent().siblings().removeClass("current");
+            var tab = $(this).attr("href");
+            $("#" + tabsContentContainerId + " > div").not(tab).css("display", "none");
+            $(tab).show();
+        });
+        var firstDiv = $("#" + tabsContentContainerId + " > div").first().show();
     }
 
     getFilteringListHTML(type: FilteringType): string {
         var ids = this.subscription.getIds(type);
         var filteringList = this.subscription.getFilteringList(type);
 
-        var result = "<span id=" + ids.typeId + ">";
+        // plus button
+        var result = '<div id="' + this.getFilteringTypeTabId(type) + '" class="FFnS_FilteringList">' +
+        '<span id="' + this.getHTMLId(ids.plusBtnId) + '" > <img src="' + cst.plusIconLink + '" class="FFnS_icon" /></span>';
+
+        // Erase button
+        result += '<span id="' + this.getHTMLId(ids.eraseBtnId) + '" > <img src="' + cst.eraseIconLink + '" class="FFnS_icon" /></span>';
 
         // keyword list
         for (var i = 0; i < filteringList.length; i++) {
             var keyword = filteringList[i];
             var keywordId = this.getKeywordId(ids.typeId, keyword);
-            result += '<button id="' + keywordId + '" type="button" style="' + cst.keywordTagStyle + '">' + keyword + '</button>';
+            result += '<button id="' + keywordId + '" type="button" class="FFnS_keyword">' + keyword + '</button>';
         }
 
-        // plus button
-        result += '<span id="' + ids.plusBtnId + '" > <img src="' + cst.plusIconLink + '" style="' + cst.iconStyle + '" /></span>';
-
-        // Erase button
-        result += '<span id="' + ids.eraseBtnId + '" > <img src="' + cst.eraseIconLink + '" style="' + cst.iconStyle + '" /></span>';
-
-        result += "</span>";
+        result += "</div>";
         return result;
     }
 
@@ -171,7 +169,8 @@ export class UIManager {
     refreshFilteringList(type: FilteringType) {
         var keywordListHtml = this.getFilteringListHTML(type);
         var keywordListId = this.subscription.getIds(type).typeId;
-        $id(keywordListId).replaceWith(keywordListHtml);
+        $id(this.getFilteringTypeTabId(type)).replaceWith(keywordListHtml);
+        $id(this.getFilteringTypeTabId(type)).show();
 
         this.refreshTopics();
         this.subscription.save(type);
@@ -186,7 +185,7 @@ export class UIManager {
         var ids = this.subscription.getIds(type);
         var keywordList = this.subscription.getFilteringList(type);
 
-        $id(ids.plusBtnId).click(() => {
+        $id(this.getHTMLId(ids.plusBtnId)).click(() => {
             var keyword = prompt("Add keyword", "");
             if (keyword !== null) {
                 keywordList.push(keyword);
@@ -195,7 +194,7 @@ export class UIManager {
         });
 
         // Erase button event
-        $id(ids.eraseBtnId).click(() => {
+        $id(this.getHTMLId(ids.eraseBtnId)).click(() => {
             if (confirm("Erase all the keyword of this list ?")) {
                 keywordList.length = 0;
                 this.refreshFilteringList(type);
@@ -224,16 +223,24 @@ export class UIManager {
         $(cst.topicSelector).toArray().forEach(this.topicManager.refreshTopic, this.topicManager);
     }
 
+    getHTMLId(id: string) {
+        return "FFnS_" + id;
+    }
+
     getKeywordId(keywordListId: string, keyword: string) {
         if (!(keyword in this.keywordToId)) {
             var id = this.idCount++;
             this.keywordToId[keyword] = id;
         }
-        return keywordListId + "_" + this.keywordToId[keyword];
+        return this.getHTMLId(keywordListId + "_" + this.keywordToId[keyword]);
     }
 
     getBtnId (elementId: string): string {
-        return this.settingsBtnId + "_" + elementId;
+        return this.getHTMLId(this.settingsBtnId + "_" + elementId);
+    }
+
+    getFilteringTypeTabId(filteringType: FilteringType) {
+        return this.getHTMLId("tab_" + FilteringType[filteringType]);
     }
 
     refreshPage() {

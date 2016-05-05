@@ -5,6 +5,10 @@ module.exports = function(grunt) {
         srcFiles.push("src/" + file + ".ts");
         targetFiles.push("target/" + file + ".js");
     });
+
+    var style = grunt.file.read("resources/style.css").replace(/\s+/g, ' ');
+    var styleInjector = '$("head").append("<style>' + style + '</style>");';
+
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
         deploy: grunt.file.isFile('deploy.json') ? grunt.file.readJSON('deploy.json') : { path: "" },
@@ -18,7 +22,7 @@ module.exports = function(grunt) {
             }
         },
         watch: {
-            files: ['Header.js', 'Gruntfile.js'].concat(srcFiles),
+            files: ['resources/Header.js', 'resources/style.css', 'Gruntfile.js'].concat(srcFiles),
             tasks: ['default'],
             options: {
                 interrupt: true
@@ -67,8 +71,18 @@ module.exports = function(grunt) {
         },
         concat: {
             script: {
-                src: ['Header.js'].concat(targetFiles),
+                src: ['resources/Header.js'].concat(targetFiles),
                 dest: 'script/<%= pkg.name %>.user.js'
+            }
+        },
+        file_append: {
+            style: {
+              files: [
+                {
+                  append: styleInjector,
+                  input: 'script/<%= pkg.name %>.user.js'
+                }
+              ]
             }
         },
         copy: {
@@ -88,6 +102,7 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-concat');
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks('grunt-contrib-watch');
+    grunt.loadNpmTasks('grunt-file-append');
 
-    grunt.registerTask('default', ['ts', 'string-replace:ts', 'concat:script', 'copy:deploy']);
+    grunt.registerTask('default', ['ts', 'string-replace:ts', 'concat:script', 'file_append:style', 'copy:deploy']);
 };
