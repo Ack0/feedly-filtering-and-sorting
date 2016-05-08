@@ -1,7 +1,8 @@
 var templates = {
     "settingsHTML": "",
     "filteringListHTML": "",
-    "filteringKeywordHTML": ""
+    "filteringKeywordHTML": "",
+    "styleCSS": ""
 }
 
 declare module "templates" {

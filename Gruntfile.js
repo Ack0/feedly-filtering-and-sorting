@@ -6,9 +6,6 @@ module.exports = function(grunt) {
         targetFiles.push("target/" + file + ".js");
     });
 
-    var style = grunt.file.read("resources/style.css").replace(/\s+/g, ' ');
-    var styleInjector = '$("head").append("<style>' + style + '</style>");';
-
     var templates = grunt.file.readJSON('templates.json');
     var replacements = [];
     templates.forEach((template) => {
@@ -91,16 +88,6 @@ module.exports = function(grunt) {
                 dest: 'script/<%= pkg.name %>.user.js'
             }
         },
-        file_append: {
-            style: {
-              files: [
-                {
-                  append: styleInjector,
-                  input: 'script/<%= pkg.name %>.user.js'
-                }
-              ]
-            }
-        },
         copy: {
             deploy: {
                 src: 'script/<%= pkg.name %>.user.js',
@@ -118,7 +105,6 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-concat');
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks('grunt-contrib-watch');
-    grunt.loadNpmTasks('grunt-file-append');
 
-    grunt.registerTask('default', ['ts', 'string-replace:ts', 'string-replace:templates', 'concat:script', 'file_append:style', 'copy:deploy']);
+    grunt.registerTask('default', ['ts', 'string-replace:ts', 'string-replace:templates', 'concat:script', 'copy:deploy']);
 };

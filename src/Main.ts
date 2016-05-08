@@ -7,6 +7,7 @@ import {callbackBind} from "./Utils";
 $(document).ready(function () {
     var uiManager = new UIManager();
     var uiManagerBind = callbackBind(uiManager);
+    $("head").append("<style>" + templates.styleCSS + "</style>");
 
     NodeCreationObserver.onCreation(cst.pageChangeSelector, function() {
         console.log("Feedly page fully loaded");

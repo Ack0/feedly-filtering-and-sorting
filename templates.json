@@ -1,10 +1,18 @@
-[{
-    "name": "settingsHTML",
-    "file": "resources/settings.html"
-},{
-    "name": "filteringListHTML",
-    "file": "resources/filteringList.html"
-},{
-    "name": "filteringKeywordHTML",
-    "file": "resources/filteringKeyword.html"
-}]
+[
+    {
+        "name": "settingsHTML",
+        "file": "resources/settings.html"
+    },
+    {
+        "name": "filteringListHTML",
+        "file": "resources/filteringList.html"
+    },
+    {
+        "name": "filteringKeywordHTML",
+        "file": "resources/filteringKeyword.html"
+    },
+    {
+        "name": "styleCSS",
+        "file": "resources/style.css"
+    }
+]
