@@ -29,7 +29,7 @@ module.exports = function(grunt) {
             }
         },
         watch: {
-            files: ['resources/Header.js', 'resources/style.css', 'Gruntfile.js'].concat(srcFiles),
+            files: ['resources/Header.js', 'resources/style.css', 'resources/settings.html', 'Gruntfile.js'].concat(srcFiles),
             tasks: ['default'],
             options: {
                 interrupt: true

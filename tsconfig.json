@@ -9,12 +9,12 @@
         "src/*.ts"
     ],
     "files": [
+        "src/ArticleManager.ts",
         "src/Constants.ts",
         "src/DAO.ts",
         "src/Main.ts",
         "src/Subscription.ts",
         "src/Templates.ts",
-        "src/TopicManager.ts",
         "src/UIManager.ts",
         "src/Utils.ts",
         "src/_references.d.ts"

@@ -2,11 +2,17 @@
     <div id="FFnS_settingsDiv">
         <img id="FFnS_CloseSettingsBtn" src="{{closeIconLink}}" class="pageAction requiresLogin" style="float:right;display:inline-block;width: 24px; height: 24px;">
         <span>
-            <span class="FFnS_settings_span">Filtering enabled</span>
+            <span class="FFnS_settings_span tooltip">
+                Filtering enabled
+                <span class="tooltiptext">Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span>
+            </span>
             <input id="FFnS_enableFiltering" style="vertical-align: middle;" type="checkbox">
         </span>        
         <span class="FFnS_margin_element">
-            <span class="FFnS_settings_span">Restricting enabled</span>
+            <span class="FFnS_settings_span tooltip">
+                Restricting enabled
+                <span class="tooltiptext">Show only articles that contain at least one of the restricting keywords (not applied if empty)</span>
+            </span>
             <input id="FFnS_enableRestricting" style="vertical-align: middle;" type="checkbox">
         </span>
         
@@ -23,10 +29,10 @@
         
         <ul id="FFnS_tabs_menu">
             <li class="current">
-                <a href="#FFnS_tab_FilteredOut">Filtering (Keywords the feeds must not contain)</a>
+                <a href="#FFnS_tab_FilteredOut">Filtering keywords</a>
             </li>
             <li class="">
-                <a href="#FFnS_tab_RestrictedOn">Restricting (Keywords the the feeds must contain)</a>
+                <a href="#FFnS_tab_RestrictedOn">Restricting keywords</a>
             </li>
         </ul>
                 

@@ -3,7 +3,7 @@
 import * as cst from "constants";
 import {Subscription, SortingType, FilteringType} from "./Subscription";
 
-export class TopicManager {
+export class ArticleManager {
     titles = [];
     nbrRecommendationsArray = [];
     private subscription: Subscription;

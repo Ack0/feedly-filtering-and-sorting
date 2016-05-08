@@ -134,19 +134,19 @@ var Subscription = (function () {
     return Subscription;
 }());
 
-var TopicManager = (function () {
-    function TopicManager() {
+var ArticleManager = (function () {
+    function ArticleManager() {
         this.titles = [];
         this.nbrRecommendationsArray = [];
     }
-    TopicManager.prototype.setSubscription = function (subscription) {
+    ArticleManager.prototype.setSubscription = function (subscription) {
         this.subscription = subscription;
     };
-    TopicManager.prototype.resetSorting = function () {
+    ArticleManager.prototype.resetSorting = function () {
         this.titles = [];
         this.nbrRecommendationsArray = [];
     };
-    TopicManager.prototype.refreshTopic = function (topicNode) {
+    ArticleManager.prototype.refreshTopic = function (topicNode) {
         var topic = $(topicNode);
         var title = topic.attr(cst.topicTitleAttribute).toLowerCase();
         if (this.subscription.isFilteringEnabled() || this.subscription.isRestrictingEnabled()) {
@@ -183,7 +183,7 @@ var TopicManager = (function () {
             this.sortTopic(topic);
         }
     };
-    TopicManager.prototype.sortTopic = function (topic) {
+    ArticleManager.prototype.sortTopic = function (topic) {
         var sortingType = this.subscription.getSortingType();
         if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
             var title = topic.attr(cst.topicTitleAttribute).toLowerCase();
@@ -215,7 +215,7 @@ var TopicManager = (function () {
             this.insertIndex(topic, index);
         }
     };
-    TopicManager.prototype.insertIndex = function (element, i) {
+    ArticleManager.prototype.insertIndex = function (element, i) {
         // The elemen0t we want to swap with
         var $target = element.parent().children().eq(i);
         // Determine the direction of the appended index so we know what side to place it on
@@ -226,7 +226,7 @@ var TopicManager = (function () {
             $target.after(element);
         }
     };
-    return TopicManager;
+    return ArticleManager;
 }());
 
 var DAO = (function () {
@@ -243,15 +243,15 @@ var DAO = (function () {
 }());
 
 var templates = {
-    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin' style='float:right;display:inline-block;width: 24px; height: 24px;'> <span> <span class='FFnS_settings_span'>Filtering enabled</span> <input id='FFnS_enableFiltering' style='vertical-align: middle;' type='checkbox'> </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span'>Restricting enabled</span> <input id='FFnS_enableRestricting' style='vertical-align: middle;' type='checkbox'> </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_sortingEnabled' style='vertical-align: middle;' type='checkbox'> <select id='FFnS_sortingType' class='FFnS_margin_element' style='vertical-align: middle; font-size:12px;'> <option value='{{SortingType.PopularityDesc}}'>Sort by number of recommendations (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by number of recommendations (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering (Keywords the feeds must not contain)</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting (Keywords the the feeds must contain)</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} </div> </div> </div>",
+    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin' style='float:right;display:inline-block;width: 24px; height: 24px;'> <span> <span class='FFnS_settings_span tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_enableFiltering' style='vertical-align: middle;' type='checkbox'> </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_enableRestricting' style='vertical-align: middle;' type='checkbox'> </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_sortingEnabled' style='vertical-align: middle;' type='checkbox'> <select id='FFnS_sortingType' class='FFnS_margin_element' style='vertical-align: middle; font-size:12px;'> <option value='{{SortingType.PopularityDesc}}'>Sort by number of recommendations (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by number of recommendations (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} </div> </div> </div>",
     "filteringListHTML": "<div id='{{FilteringTypeTabId}}' class='FFnS_FilteringList'> <span id='{{plusBtnId}}'> <img src='{{plusIconLink}}' class='FFnS_icon' /> </span> <span id='{{eraseBtnId}}'> <img src='{{eraseIconLink}}' class='FFnS_icon' /> </span> {{filetring.keywords}} </div> ",
     "filteringKeywordHTML": "<button id='{{keywordId}}' type='button' class='FFnS_keyword'>{{keyword}}</button>",
-    "styleCSS": "#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 200px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } #FFnS_tabs_menu { height: 30px; clear: both; margin: 0px; padding: 0px; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_margin_element { margin-left: 2% } .FFnS_FilteringList { display: none; width: 100%; max-height: 140px; overflow-y: auto; overflow-x: hidden; } .FFnS_settings_span { display: inline; vertical-align: middle; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } "
+    "styleCSS": "#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 400px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } #FFnS_tabs_menu { height: 30px; clear: both; margin: 0px; padding: 0px; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_margin_element { margin-left: 2% } .FFnS_FilteringList { display: none; width: 100%; max-height: 340px; overflow-y: auto; overflow-x: hidden; } .FFnS_settings_span { display: inline; vertical-align: middle; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; } .tooltip .tooltiptext { visibility: hidden; width: 120px; background-color: black; color: #fff; text-align: center; padding: 5px 0; border-radius: 6px; position: absolute; z-index: 1; } .tooltip:hover .tooltiptext { visibility: visible; }"
 };
 
 var UIManager = (function () {
     function UIManager() {
-        this.topicManager = new TopicManager();
+        this.articleManager = new ArticleManager();
         this.keywordToId = {};
         this.idCount = 1;
         this.settingsDivId = this.getHTMLId("settingsDiv");
@@ -410,8 +410,8 @@ var UIManager = (function () {
         }
     };
     UIManager.prototype.refreshTopics = function () {
-        this.topicManager.resetSorting();
-        $(cst.topicSelector).toArray().forEach(this.topicManager.refreshTopic, this.topicManager);
+        this.articleManager.resetSorting();
+        $(cst.topicSelector).toArray().forEach(this.articleManager.refreshTopic, this.articleManager);
     };
     UIManager.prototype.getHTMLId = function (id) {
         return "FFnS_" + id;
@@ -437,13 +437,13 @@ var UIManager = (function () {
         var url = document.URL;
         console.log("url changed: " + url);
         this.subscription = new Subscription("");
-        this.topicManager.setSubscription(this.subscription);
+        this.articleManager.setSubscription(this.subscription);
     };
     UIManager.prototype.resetSorting = function () {
-        this.topicManager.resetSorting();
+        this.articleManager.resetSorting();
     };
     UIManager.prototype.refreshTopic = function (topicNode) {
-        this.topicManager.refreshTopic(topicNode);
+        this.articleManager.refreshTopic(topicNode);
     };
     return UIManager;
 }());

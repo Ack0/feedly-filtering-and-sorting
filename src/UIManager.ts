@@ -2,11 +2,11 @@
 
 import * as cst from "constants";
 import {Subscription, FilteringType, SortingType} from "./Subscription";
-import {TopicManager} from "./TopicManager";
+import {ArticleManager} from "./ArticleManager";
 import {$id, bindMarkup} from "./Utils";
 
 export class UIManager {
-    topicManager: TopicManager = new TopicManager();
+    articleManager: ArticleManager = new ArticleManager();
     private subscription: Subscription;
 
     keywordToId = {};
@@ -188,8 +188,8 @@ export class UIManager {
     }
 
     refreshTopics() {
-        this.topicManager.resetSorting();
-        $(cst.topicSelector).toArray().forEach(this.topicManager.refreshTopic, this.topicManager);
+        this.articleManager.resetSorting();
+        $(cst.topicSelector).toArray().forEach(this.articleManager.refreshTopic, this.articleManager);
     }
 
     getHTMLId(id: string) {
@@ -221,15 +221,15 @@ export class UIManager {
         var url = document.URL;
         console.log("url changed: " + url);
         this.subscription = new Subscription("");
-        this.topicManager.setSubscription(this.subscription);
+        this.articleManager.setSubscription(this.subscription);
     }
 
     resetSorting() {
-        this.topicManager.resetSorting();
+        this.articleManager.resetSorting();
     }
 
     refreshTopic(topicNode: Node) {
-        this.topicManager.refreshTopic(topicNode);
+        this.articleManager.refreshTopic(topicNode);
     }
 
 }
