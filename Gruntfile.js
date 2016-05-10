@@ -1,9 +1,13 @@
 module.exports = function(grunt) {
     var files = grunt.file.readJSON('compile.json').files;
-    var srcFiles = [], targetFiles = [];
+    var srcFiles = [], targetFiles = [], srcReplacements = [];
     files.forEach(function(file) {
         srcFiles.push("src/" + file + ".ts");
         targetFiles.push("target/" + file + ".js");
+        srcReplacements.push({
+            pattern: new RegExp(file + "_[0-9]+\.", "ig"),
+            replacement: ''
+        });
     });
 
     var templates = grunt.file.readJSON('templates.json');
@@ -61,18 +65,10 @@ module.exports = function(grunt) {
                             replacement: '= new '
                         },
                         {
-                            pattern: /Utils_[0-9]+\./ig,
-                            replacement: ''
-                        },
-                        {
-                            pattern: /Subscription_[0-9]+\./ig,
-                            replacement: ''
-                        },
-                        {
                             pattern: /exports\./g,
                             replacement: 'exported.'
                         }
-                    ]
+                    ].concat(srcReplacements)
                 }
             },
             'templates': {

@@ -11,9 +11,11 @@
     "files": [
         "src/ArticleManager.ts",
         "src/Constants.ts",
-        "src/DAO.ts",
+        "src/DataTypes.ts",
         "src/Main.ts",
         "src/Subscription.ts",
+        "src/SubscriptionDAO.ts",
+        "src/SubscriptionManager.ts",
         "src/Templates.ts",
         "src/UIManager.ts",
         "src/Utils.ts",

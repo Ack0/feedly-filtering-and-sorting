@@ -1,6 +1,5 @@
 /// <reference path="./_references.d.ts" />
 
-import * as cst from "constants";
 import {UIManager} from "./UIManager";
 import {callbackBind} from "./Utils";
 

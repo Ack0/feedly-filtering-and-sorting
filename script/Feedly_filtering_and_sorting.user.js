@@ -43,11 +43,6 @@ function callbackBind(thisArg) {
     }).bind(thisArg);
 }
 
-(function (FilteringType) {
-    FilteringType[FilteringType["RestrictedOn"] = 0] = "RestrictedOn";
-    FilteringType[FilteringType["FilteredOut"] = 1] = "FilteredOut";
-})(exported.FilteringType || (exported.FilteringType = {}));
-var FilteringType = exported.FilteringType;
 (function (SortingType) {
     SortingType[SortingType["PopularityDesc"] = 0] = "PopularityDesc";
     SortingType[SortingType["PopularityAsc"] = 1] = "PopularityAsc";
@@ -55,83 +50,121 @@ var FilteringType = exported.FilteringType;
     SortingType[SortingType["TitleAsc"] = 3] = "TitleAsc";
 })(exported.SortingType || (exported.SortingType = {}));
 var SortingType = exported.SortingType;
-var FilteringTypeIds = (function () {
-    function FilteringTypeIds() {
-    }
-    return FilteringTypeIds;
-}());
+(function (FilteringType) {
+    FilteringType[FilteringType["RestrictedOn"] = 0] = "RestrictedOn";
+    FilteringType[FilteringType["FilteredOut"] = 1] = "FilteredOut";
+})(exported.FilteringType || (exported.FilteringType = {}));
+var FilteringType = exported.FilteringType;
+function getFilteringTypes() {
+    return [FilteringType.FilteredOut, FilteringType.RestrictedOn];
+}
+function getFilteringTypeId(type) {
+    return FilteringType[type];
+}
+
 var Subscription = (function () {
-    function Subscription(path) {
-        var _this = this;
-        this.filteringIdsByType = {};
+    function Subscription(subscriptionDAO) {
         this.filteringListsByType = {};
-        this.filteringEnabledId = "filteringEnabled";
-        this.restrictingEnabledId = "restrictingEnabled";
-        this.sortingEnabledId = "sortingEnabled";
-        this.sortingTypeId = "sortingType";
-        this.dao = new DAO(path);
-        this.filteringEnabled = this.dao.getValue(this.filteringEnabledId, false);
-        this.restrictingEnabled = this.dao.getValue(this.restrictingEnabledId, false);
-        this.sortingEnabled = this.dao.getValue(this.sortingEnabledId, false);
-        this.sortingType = this.dao.getValue(this.sortingTypeId, SortingType.PopularityDesc);
-        this.filteringIdsByType[FilteringType.RestrictedOn] = {
-            typeId: "restrictedOnKeywords",
-            plusBtnId: "AddRestrictedOnKeyword",
-            eraseBtnId: "DeleteAllRestrictedOnKeyword"
-        };
-        this.filteringIdsByType[FilteringType.FilteredOut] = {
-            typeId: "filteredOutKeywords",
-            plusBtnId: "AddFilteredOutKeyword",
-            eraseBtnId: "DeleteAllFilteredOutKeyword"
-        };
-        this.forEachFilteringType(function (type) {
-            var ids = _this.filteringIdsByType[type];
-            _this.filteringListsByType[type] = _this.dao.getValue(ids.typeId, []);
-        }, this);
+        this.dao = subscriptionDAO;
     }
     Subscription.prototype.isFilteringEnabled = function () {
         return this.filteringEnabled;
     };
     Subscription.prototype.setFilteringEnabled = function (filteringEnabled) {
         this.filteringEnabled = filteringEnabled;
-        this.dao.setValue(this.filteringEnabledId, this.filteringEnabled);
+        this.dao.save(this);
     };
     Subscription.prototype.isRestrictingEnabled = function () {
         return this.restrictingEnabled;
     };
     Subscription.prototype.setRestrictingEnabled = function (restrictingEnabled) {
         this.restrictingEnabled = restrictingEnabled;
-        this.dao.setValue(this.restrictingEnabledId, this.restrictingEnabled);
+        this.dao.save(this);
     };
     Subscription.prototype.isSortingEnabled = function () {
         return this.sortingEnabled;
     };
     Subscription.prototype.setSortingEnabled = function (sortingEnabled) {
         this.sortingEnabled = sortingEnabled;
-        this.dao.setValue(this.sortingEnabledId, this.sortingEnabled);
+        this.dao.save(this);
     };
     Subscription.prototype.getSortingType = function () {
         return this.sortingType;
     };
     Subscription.prototype.setSortingType = function (sortingType) {
         this.sortingType = sortingType;
-        this.dao.setValue(this.sortingTypeId, this.sortingType);
+        this.dao.save(this);
     };
     Subscription.prototype.getFilteringList = function (type) {
         return this.filteringListsByType[type];
     };
-    Subscription.prototype.getIds = function (type) {
-        return this.filteringIdsByType[type];
+    Subscription.prototype.addKeyword = function (keyword, type) {
+        this.getFilteringList(type).push(keyword);
+        this.dao.save(this);
     };
-    Subscription.prototype.forEachFilteringType = function (callback, thisArg) {
-        Object.keys(this.filteringIdsByType).forEach(function (type) {
-            callback.call(thisArg, type);
-        });
+    Subscription.prototype.removeKeyword = function (keyword, type) {
+        var keywordList = this.getFilteringList(type);
+        var index = keywordList.indexOf(keyword);
+        if (index > -1) {
+            keywordList.splice(index, 1);
+        }
+        this.dao.save(this);
     };
-    Subscription.prototype.save = function (type) {
-        this.dao.setValue(this.getIds(type).typeId, this.getFilteringList(type));
+    Subscription.prototype.reset = function (type) {
+        this.getFilteringList(type).length = 0;
+        this.dao.save(this);
     };
     return Subscription;
+}());
+
+var SubscriptionDAO = (function () {
+    function SubscriptionDAO() {
+        this.filteringEnabledId = "filteringEnabled";
+        this.restrictingEnabledId = "restrictingEnabled";
+        this.sortingEnabledId = "sortingEnabled";
+        this.sortingTypeId = "sortingType";
+    }
+    SubscriptionDAO.prototype.save = function (subscription) {
+        var _this = this;
+        this.setValue(this.filteringEnabledId, subscription.filteringEnabled);
+        this.setValue(this.restrictingEnabledId, subscription.restrictingEnabled);
+        this.setValue(this.sortingEnabledId, subscription.sortingEnabled);
+        this.setValue(this.sortingTypeId, subscription.sortingType);
+        getFilteringTypes().forEach(function (type) {
+            _this.setValue(getFilteringTypeId(type), subscription.getFilteringList(type));
+        }, this);
+    };
+    SubscriptionDAO.prototype.get = function (path) {
+        var _this = this;
+        var subscription = new Subscription(this);
+        subscription.filteringEnabled = this.getValue(this.filteringEnabledId, false);
+        subscription.restrictingEnabled = this.getValue(this.restrictingEnabledId, false);
+        subscription.sortingEnabled = this.getValue(this.sortingEnabledId, false);
+        subscription.sortingType = this.getValue(this.sortingTypeId, SortingType.PopularityDesc);
+        getFilteringTypes().forEach(function (type) {
+            subscription.filteringListsByType[type] = _this.getValue(getFilteringTypeId(type), []);
+        }, this);
+        return subscription;
+    };
+    SubscriptionDAO.prototype.getValue = function (id, defaultValue) {
+        return JSON.parse(GM_getValue(id, JSON.stringify(defaultValue)));
+    };
+    SubscriptionDAO.prototype.setValue = function (id, value) {
+        GM_setValue(id, JSON.stringify(value));
+    };
+    return SubscriptionDAO;
+}());
+
+var SubscriptionManager = (function () {
+    function SubscriptionManager() {
+        this.dao = new SubscriptionDAO();
+    }
+    SubscriptionManager.prototype.updateSubscription = function (url) {
+        console.log("url changed: " + url);
+        this.currentSubscription = this.dao.get("");
+        return this.currentSubscription;
+    };
+    return SubscriptionManager;
 }());
 
 var ArticleManager = (function () {
@@ -229,19 +262,6 @@ var ArticleManager = (function () {
     return ArticleManager;
 }());
 
-var DAO = (function () {
-    function DAO(path) {
-        this.path = path;
-    }
-    DAO.prototype.getValue = function (id, defaultValue) {
-        return JSON.parse(GM_getValue(id, JSON.stringify(defaultValue)));
-    };
-    DAO.prototype.setValue = function (id, value) {
-        GM_setValue(id, JSON.stringify(value));
-    };
-    return DAO;
-}());
-
 var templates = {
     "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin' style='float:right;display:inline-block;width: 24px; height: 24px;'> <span> <span class='FFnS_settings_span tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_enableFiltering' style='vertical-align: middle;' type='checkbox'> </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_enableRestricting' style='vertical-align: middle;' type='checkbox'> </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_sortingEnabled' style='vertical-align: middle;' type='checkbox'> <select id='FFnS_sortingType' class='FFnS_margin_element' style='vertical-align: middle; font-size:12px;'> <option value='{{SortingType.PopularityDesc}}'>Sort by number of recommendations (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by number of recommendations (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} </div> </div> </div>",
     "filteringListHTML": "<div id='{{FilteringTypeTabId}}' class='FFnS_FilteringList'> <span id='{{plusBtnId}}'> <img src='{{plusIconLink}}' class='FFnS_icon' /> </span> <span id='{{eraseBtnId}}'> <img src='{{eraseIconLink}}' class='FFnS_icon' /> </span> {{filetring.keywords}} </div> ",
@@ -251,6 +271,7 @@ var templates = {
 
 var UIManager = (function () {
     function UIManager() {
+        this.subscriptionManager = new SubscriptionManager();
         this.articleManager = new ArticleManager();
         this.keywordToId = {};
         this.idCount = 1;
@@ -294,7 +315,7 @@ var UIManager = (function () {
         var firstDiv = $("#" + tabsContentContainerId + " > div").first().show();
     };
     UIManager.prototype.getFilteringListHTML = function (type) {
-        var ids = this.subscription.getIds(type);
+        var ids = this.getIds(type);
         var filteringList = this.subscription.getFilteringList(type);
         var filteringKeywordsHTML = "";
         for (var i = 0; i < filteringList.length; i++) {
@@ -365,31 +386,29 @@ var UIManager = (function () {
     };
     UIManager.prototype.refreshFilteringList = function (type) {
         var keywordListHtml = this.getFilteringListHTML(type);
-        var keywordListId = this.subscription.getIds(type).typeId;
         $id(this.getFilteringTypeTabId(type)).replaceWith(keywordListHtml);
         $id(this.getFilteringTypeTabId(type)).show();
         this.refreshTopics();
-        this.subscription.save(type);
         this.setUpFilteringListEvents();
     };
     UIManager.prototype.setUpFilteringListEvents = function () {
-        this.subscription.forEachFilteringType(this.setUpFilteringListTypeEvents, this);
+        getFilteringTypes().forEach(this.setUpFilteringListTypeEvents, this);
     };
     UIManager.prototype.setUpFilteringListTypeEvents = function (type) {
         var _this = this;
-        var ids = this.subscription.getIds(type);
+        var ids = this.getIds(type);
         var keywordList = this.subscription.getFilteringList(type);
         $id(this.getHTMLId(ids.plusBtnId)).click(function () {
             var keyword = prompt("Add keyword", "");
             if (keyword !== null) {
-                keywordList.push(keyword);
+                _this.subscription.addKeyword(keyword, type);
                 _this.refreshFilteringList(type);
             }
         });
         // Erase button event
         $id(this.getHTMLId(ids.eraseBtnId)).click(function () {
             if (confirm("Erase all the keyword of this list ?")) {
-                keywordList.length = 0;
+                _this.subscription.reset(type);
                 _this.refreshFilteringList(type);
             }
         });
@@ -400,11 +419,8 @@ var UIManager = (function () {
             $id(keywordId).click(function () {
                 var keyword = $(this).text();
                 if (confirm("Delete the keyword ?")) {
-                    var index = keywordList.indexOf(keyword);
-                    if (index > -1) {
-                        keywordList.splice(index, 1);
-                        t.refreshFilteringList(type);
-                    }
+                    t.subscription.removeKeyword(keyword, type);
+                    t.refreshFilteringList(type);
                 }
             });
         }
@@ -435,8 +451,7 @@ var UIManager = (function () {
     };
     UIManager.prototype.refreshSubscription = function () {
         var url = document.URL;
-        console.log("url changed: " + url);
-        this.subscription = new Subscription("");
+        this.subscription = this.subscriptionManager.updateSubscription(url);
         this.articleManager.setSubscription(this.subscription);
     };
     UIManager.prototype.resetSorting = function () {
@@ -444,6 +459,14 @@ var UIManager = (function () {
     };
     UIManager.prototype.refreshTopic = function (topicNode) {
         this.articleManager.refreshTopic(topicNode);
+    };
+    UIManager.prototype.getIds = function (type) {
+        var id = getFilteringTypeId(type);
+        return {
+            typeId: "Keywords_" + id,
+            plusBtnId: "Add_" + id,
+            eraseBtnId: "DeleteAll_" + id
+        };
     };
     return UIManager;
 }());

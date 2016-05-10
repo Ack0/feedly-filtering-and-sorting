@@ -2,9 +2,11 @@
     "files": [
         "Constants",
         "Utils",
+        "DataTypes",
         "Subscription",
+        "SubscriptionDAO",
+        "SubscriptionManager",
         "ArticleManager",
-        "DAO",
         "Templates",
         "UIManager",
         "Main"

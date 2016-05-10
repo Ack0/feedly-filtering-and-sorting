@@ -1,12 +1,14 @@
 /// <reference path="./_references.d.ts" />
 
-import * as cst from "constants";
-import {Subscription, FilteringType, SortingType} from "./Subscription";
+import {FilteringType, SortingType, getFilteringTypes, getFilteringTypeId} from "./DataTypes";
+import {Subscription} from "./Subscription";
 import {ArticleManager} from "./ArticleManager";
+import {SubscriptionManager} from "./SubscriptionManager";
 import {$id, bindMarkup} from "./Utils";
 
 export class UIManager {
-    articleManager: ArticleManager = new ArticleManager();
+    subscriptionManager = new SubscriptionManager();
+    articleManager = new ArticleManager();
     private subscription: Subscription;
 
     keywordToId = {};
@@ -20,7 +22,7 @@ export class UIManager {
     enableRestrictingCheckId = this.getHTMLId("enableRestricting");
     sortingTypeId = this.getHTMLId("sortingType");
     sortingEnabledId = this.getHTMLId("sortingEnabled");
-
+    
     setUpSettingsMenu() {
         this.initSettingsMenu();
         this.initSettingsBtns();
@@ -56,7 +58,7 @@ export class UIManager {
     }
 
     getFilteringListHTML(type: FilteringType): string {
-        var ids = this.subscription.getIds(type);
+        var ids = this.getIds(type);
         var filteringList = this.subscription.getFilteringList(type);
         
         var filteringKeywordsHTML = "";
@@ -137,27 +139,25 @@ export class UIManager {
 
     refreshFilteringList(type: FilteringType) {
         var keywordListHtml = this.getFilteringListHTML(type);
-        var keywordListId = this.subscription.getIds(type).typeId;
         $id(this.getFilteringTypeTabId(type)).replaceWith(keywordListHtml);
         $id(this.getFilteringTypeTabId(type)).show();
 
         this.refreshTopics();
-        this.subscription.save(type);
         this.setUpFilteringListEvents();
     }
 
     private setUpFilteringListEvents() {
-        this.subscription.forEachFilteringType(this.setUpFilteringListTypeEvents, this);
+        getFilteringTypes().forEach(this.setUpFilteringListTypeEvents, this);
     }
 
     private setUpFilteringListTypeEvents(type: FilteringType) {
-        var ids = this.subscription.getIds(type);
+        var ids = this.getIds(type);
         var keywordList = this.subscription.getFilteringList(type);
 
         $id(this.getHTMLId(ids.plusBtnId)).click(() => {
             var keyword = prompt("Add keyword", "");
             if (keyword !== null) {
-                keywordList.push(keyword);
+                this.subscription.addKeyword(keyword, type);
                 this.refreshFilteringList(type);
             }
         });
@@ -165,7 +165,7 @@ export class UIManager {
         // Erase button event
         $id(this.getHTMLId(ids.eraseBtnId)).click(() => {
             if (confirm("Erase all the keyword of this list ?")) {
-                keywordList.length = 0;
+                this.subscription.reset(type);
                 this.refreshFilteringList(type);
             }
         });
@@ -177,11 +177,8 @@ export class UIManager {
             $id(keywordId).click(function () {
                 var keyword = $(this).text();
                 if (confirm("Delete the keyword ?")) {
-                    var index = keywordList.indexOf(keyword);
-                    if (index > -1) {
-                        keywordList.splice(index, 1);
-                        t.refreshFilteringList(type);
-                    }
+                    t.subscription.removeKeyword(keyword, type);
+                    t.refreshFilteringList(type);
                 }
             });
         }
@@ -219,8 +216,7 @@ export class UIManager {
 
     refreshSubscription() {
         var url = document.URL;
-        console.log("url changed: " + url);
-        this.subscription = new Subscription("");
+        this.subscription = this.subscriptionManager.updateSubscription(url);
         this.articleManager.setSubscription(this.subscription);
     }
 
@@ -230,6 +226,15 @@ export class UIManager {
 
     refreshTopic(topicNode: Node) {
         this.articleManager.refreshTopic(topicNode);
+    }
+
+    getIds(type: FilteringType) {
+        var id = getFilteringTypeId(type);
+        return {
+            typeId: "Keywords_" + id,
+            plusBtnId: "Add_" + id,
+            eraseBtnId: "DeleteAll_" + id
+        };
     }
 
 }

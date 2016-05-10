@@ -1,106 +1,77 @@
 /// <reference path="./_references.d.ts" />
 
-import {DAO} from "./DAO";
-
-export enum FilteringType {
-    RestrictedOn,
-    FilteredOut
-}
-
-export enum SortingType {
-    PopularityDesc,
-    PopularityAsc,
-    TitleDesc,
-    TitleAsc
-}
-
-export class FilteringTypeIds {
-    typeId: string;
-    plusBtnId: string;
-    eraseBtnId: string;
-}
+import {SubscriptionDAO} from "./SubscriptionDAO";
+import {FilteringType, SortingType} from "./DataTypes";
 
 export class Subscription {
-    private filteringEnabled: boolean;
-    private restrictingEnabled: boolean;
-    private sortingEnabled: boolean;
-    private sortingType: SortingType;
-    private filteringIdsByType: { [key: number]: FilteringTypeIds; } = {};
-    private filteringListsByType: { [key: number]: string[]; } = {};
-    dao: DAO;
-	filteringEnabledId = "filteringEnabled";
-	restrictingEnabledId = "restrictingEnabled";
-	sortingEnabledId = "sortingEnabled";
-	sortingTypeId = "sortingType";
+    filteringEnabled: boolean;
+    restrictingEnabled: boolean;
+    sortingEnabled: boolean;
+    sortingType: SortingType;
+    filteringListsByType: { [key: number]: string[]; } = {};
+    
+    dao: SubscriptionDAO;
 
-    constructor(path: string) {
-        this.dao = new DAO(path);
-        this.filteringEnabled = this.dao.getValue(this.filteringEnabledId, false);
-        this.restrictingEnabled = this.dao.getValue(this.restrictingEnabledId, false);
-        this.sortingEnabled = this.dao.getValue(this.sortingEnabledId, false);
-        this.sortingType = this.dao.getValue(this.sortingTypeId, SortingType.PopularityDesc);
-
-        this.filteringIdsByType[FilteringType.RestrictedOn] = {
-            typeId: "restrictedOnKeywords",
-            plusBtnId: "AddRestrictedOnKeyword",
-            eraseBtnId: "DeleteAllRestrictedOnKeyword"
-        };
-        this.filteringIdsByType[FilteringType.FilteredOut] = {
-            typeId: "filteredOutKeywords",
-            plusBtnId: "AddFilteredOutKeyword",
-            eraseBtnId: "DeleteAllFilteredOutKeyword"
-        };
-
-        this.forEachFilteringType((type) => {
-            var ids = this.filteringIdsByType[type];
-            this.filteringListsByType[type] = this.dao.getValue(ids.typeId, []);
-        }, this);
+    constructor(subscriptionDAO: SubscriptionDAO) {
+        this.dao = subscriptionDAO;
     }
 
     isFilteringEnabled(): boolean {
         return this.filteringEnabled;
     }
+    
     setFilteringEnabled(filteringEnabled: boolean) {
         this.filteringEnabled = filteringEnabled;
-        this.dao.setValue(this.filteringEnabledId, this.filteringEnabled);
+        this.dao.save(this);
     }
+    
     isRestrictingEnabled(): boolean {
         return this.restrictingEnabled;
     }
+    
     setRestrictingEnabled(restrictingEnabled: boolean) {
         this.restrictingEnabled = restrictingEnabled;
-        this.dao.setValue(this.restrictingEnabledId, this.restrictingEnabled);
+        this.dao.save(this);
     }
+    
     isSortingEnabled(): boolean {
         return this.sortingEnabled;
     }
+    
     setSortingEnabled(sortingEnabled: boolean) {
         this.sortingEnabled = sortingEnabled;
-        this.dao.setValue(this.sortingEnabledId, this.sortingEnabled);
+        this.dao.save(this);
     }
+    
     getSortingType(): SortingType {
         return this.sortingType;
     }
+    
     setSortingType(sortingType: SortingType) {
         this.sortingType = sortingType;
-        this.dao.setValue(this.sortingTypeId, this.sortingType);
+        this.dao.save(this);
     }
 
     getFilteringList(type: FilteringType): string[] {
         return this.filteringListsByType[type];
     }
-
-    getIds(type: FilteringType) {
-        return this.filteringIdsByType[type];
+    
+    addKeyword(keyword: string, type: FilteringType) {        
+        this.getFilteringList(type).push(keyword);
+        this.dao.save(this);
     }
-
-    forEachFilteringType(callback: (type: FilteringType) => any, thisArg?: any) {
-        Object.keys(this.filteringIdsByType).forEach(function (type) {
-            callback.call(thisArg, type);
-        });
+    
+    removeKeyword(keyword: string, type: FilteringType) {        
+        var keywordList = this.getFilteringList(type);
+        var index = keywordList.indexOf(keyword);
+        if (index > -1) {
+            keywordList.splice(index, 1);
+        }
+        this.dao.save(this);
     }
-
-    save(type: FilteringType) {
-        this.dao.setValue(this.getIds(type).typeId, this.getFilteringList(type));
+    
+    reset(type: FilteringType) {
+        this.getFilteringList(type).length = 0;
+        this.dao.save(this);
     }
 }

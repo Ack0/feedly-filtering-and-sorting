@@ -1,7 +1,7 @@
 /// <reference path="./_references.d.ts" />
 
-import * as cst from "constants";
-import {Subscription, SortingType, FilteringType} from "./Subscription";
+import {FilteringType, SortingType} from "./DataTypes";
+import {Subscription} from "./Subscription";
 
 export class ArticleManager {
     titles = [];
