@@ -4,38 +4,46 @@ import {Subscription} from "./Subscription";
 import {SubscriptionManager} from "./SubscriptionManager";
 
 export class SubscriptionDAO {
-	filteringEnabledId = "filteringEnabled";
-	restrictingEnabledId = "restrictingEnabled";
-	sortingEnabledId = "sortingEnabled";
-	sortingTypeId = "sortingType";
+    private SUBSCRIPTION_ID_PREFIX = "subscription_";
     
-    save(subscription: Subscription) {
-        this.setValue(this.filteringEnabledId, subscription.filteringEnabled);
-        this.setValue(this.restrictingEnabledId, subscription.restrictingEnabled);
-        this.setValue(this.sortingEnabledId, subscription.sortingEnabled);
-        this.setValue(this.sortingTypeId, subscription.sortingType);
-        getFilteringTypes().forEach((type) => {
-            this.setValue(getFilteringTypeId(type), subscription.getFilteringList(type));
-        }, this);
+    save(subscription: Subscription) { 
+        var url = subscription.getURL();
+        var id = this.getSubscriptionId(url);
+        this.put(id, subscription);
+        console.log("Subscription saved: " + JSON.stringify(subscription));
     }
-    
-    get(path: string): Subscription {
-        var subscription = new Subscription(this);
-        subscription.filteringEnabled = this.getValue(this.filteringEnabledId, false);
-        subscription.restrictingEnabled = this.getValue(this.restrictingEnabledId, false);
-        subscription.sortingEnabled = this.getValue(this.sortingEnabledId, false);
-        subscription.sortingType = this.getValue(this.sortingTypeId, SortingType.PopularityDesc);
-        getFilteringTypes().forEach((type) => {
-            subscription.filteringListsByType[type] = this.getValue(getFilteringTypeId(type), []);
-        }, this);
+
+    load(url: string): Subscription {
+        var subscription = new Subscription(this, url);
+        var subscriptionDTO = this.get(this.getSubscriptionId(url), null);
+        if(subscriptionDTO != null) {
+            console.log("Loaded saved subscription: " + JSON.stringify(subscriptionDTO));
+            subscription.update(subscriptionDTO, true);            
+        }
         return subscription;
     }
     
-    getValue(id: string, defaultValue) {
+    getAllSubscriptionURLs() : string[] {
+        var urls = GM_listValues().filter((value: string) => {
+            return value.indexOf(this.SUBSCRIPTION_ID_PREFIX) == 0;
+        });
+        urls = urls.map<string>((value: string) => {
+            return value.substring(this.SUBSCRIPTION_ID_PREFIX.length);
+        });
+        return urls;
+    }
+    
+    getSubscriptionId(url: string): string {
+        return this.SUBSCRIPTION_ID_PREFIX + url;
+    }
+    
+    private get<t>(id: string, defaultValue:t): t {
         return JSON.parse(GM_getValue(id, JSON.stringify(defaultValue)));
     }
 
-    setValue(id: string, value: any) {
-        GM_setValue(id, JSON.stringify(value));
+    private put(id: string, value: any) {
+        GM_setValue(id, JSON.stringify(value, (key, val) => {
+            if(! (val instanceof SubscriptionDAO)) return val;
+        }));
     }
 }

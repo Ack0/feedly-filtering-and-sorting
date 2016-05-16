@@ -61,7 +61,7 @@ module.exports = function(grunt) {
                             replacement: ''
                         },
                         {
-                            pattern: /= new[^\.]*\./ig,
+                            pattern: /= new[^(\.]*\./ig,
                             replacement: '= new '
                         },
                         {

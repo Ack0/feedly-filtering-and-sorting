@@ -2,6 +2,7 @@ var templates = {
     "settingsHTML": "",
     "filteringListHTML": "",
     "filteringKeywordHTML": "",
+    "optionHTML": "<option value='{{value}}'>{{value}}</option>",
     "styleCSS": ""
 }
 

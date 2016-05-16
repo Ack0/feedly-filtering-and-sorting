@@ -1,21 +1,41 @@
 /// <reference path="./_references.d.ts" />
 
 import {SubscriptionDAO} from "./SubscriptionDAO";
-import {FilteringType, SortingType} from "./DataTypes";
+import {FilteringType, SortingType, getFilteringTypes} from "./DataTypes";
 
 export class Subscription {
-    filteringEnabled: boolean;
-    restrictingEnabled: boolean;
-    sortingEnabled: boolean;
-    sortingType: SortingType;
-    filteringListsByType: { [key: number]: string[]; } = {};
+    private url: string;
+    private filteringEnabled: boolean = false;
+    private restrictingEnabled: boolean = false;
+    private sortingEnabled: boolean = true;
+    private sortingType: SortingType = SortingType.PopularityDesc;
+    private filteringListsByType: { [key: number]: string[]; } = {};
     
     dao: SubscriptionDAO;
 
-    constructor(subscriptionDAO: SubscriptionDAO) {
+    constructor(subscriptionDAO: SubscriptionDAO, url: string) {
         this.dao = subscriptionDAO;
+        this.url = url;
+        getFilteringTypes().forEach((type) => {
+            this.filteringListsByType[type] = [];
+        });
     }
 
+    update(subscription: Subscription, skipSave?: boolean) {
+        this.filteringEnabled = subscription.filteringEnabled;
+        this.restrictingEnabled = subscription.restrictingEnabled;
+        this.sortingEnabled = subscription.sortingEnabled;
+        this.sortingType = subscription.sortingType;
+        this.filteringListsByType = subscription.filteringListsByType;
+        if(! skipSave) {
+            this.dao.save(this);
+        }
+    }
+
+    getURL(): string {
+        return this.url;
+    }
+    
     isFilteringEnabled(): boolean {
         return this.filteringEnabled;
     }

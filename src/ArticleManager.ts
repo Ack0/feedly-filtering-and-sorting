@@ -12,14 +12,14 @@ export class ArticleManager {
         this.subscription = subscription;
     }
 
-    resetSorting() {
+    resetArticles() {
         this.titles = [];
         this.nbrRecommendationsArray = [];
     }
 
-    refreshTopic(topicNode: Node) {
-        var topic = $(topicNode);
-        var title = topic.attr(cst.topicTitleAttribute).toLowerCase();
+    addArticle(articleNode: Node) {
+        var article = $(articleNode);
+        var title = article.attr(cst.articleTitleAttribute).toLowerCase();
         if (this.subscription.isFilteringEnabled() || this.subscription.isRestrictingEnabled()) {
             var restrictedOnKeywords = this.subscription.getFilteringList(FilteringType.RestrictedOn);
             var filteredOutKeywords = this.subscription.getFilteringList(FilteringType.FilteredOut);
@@ -42,33 +42,33 @@ export class ArticleManager {
                 }
             }
             if (keep) {
-                topic.css("display", "none");
+                article.css("display", "none");
             } else {
-                topic.css("display", "");
+                article.css("display", "");
             }
         } else {
-            topic.css("display", "");
+            article.css("display", "");
         }
 
         if (this.subscription.isSortingEnabled()) {
-            this.sortTopic(topic);
+            this.sortArticle(article);
         }
     }
 
-    sortTopic(topic: JQuery) {
+    sortArticle(article: JQuery) {
         var sortingType = this.subscription.getSortingType();
         if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
-            var title = topic.attr(cst.topicTitleAttribute).toLowerCase();
+            var title = article.attr(cst.articleTitleAttribute).toLowerCase();
             this.titles.push(title);
             this.titles.sort();
             if (sortingType == SortingType.TitleDesc) {
                 this.titles.reverse();
             }
             var index = jQuery.inArray(title, this.titles);
-            this.insertIndex(topic, index);
+            this.insertIndex(article, index);
         }
         else if (sortingType == SortingType.PopularityAsc || sortingType == SortingType.PopularityDesc) {
-            var nbrRecommendationsStr = topic.find(cst.nbrRecommendationsSelector).text().trim();
+            var nbrRecommendationsStr = article.find(cst.nbrRecommendationsSelector).text().trim();
             nbrRecommendationsStr = nbrRecommendationsStr.replace("+", "");
             if (nbrRecommendationsStr.indexOf("K") > -1) {
                 nbrRecommendationsStr = nbrRecommendationsStr.replace("K", "");
@@ -84,7 +84,7 @@ export class ArticleManager {
                 return (b - a) * i;
             });
             index = this.nbrRecommendationsArray.lastIndexOf(nbrRecommendations);
-            this.insertIndex(topic, index);
+            this.insertIndex(article, index);
         }
     }
     

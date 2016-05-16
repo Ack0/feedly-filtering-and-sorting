@@ -48,7 +48,7 @@
 .FFnS_margin_element {
 	margin-left: 2% 
 }
-.FFnS_FilteringList {
+.FFnS_Tab_Menu {
 	display: none;
 	width: 100%;
 	max-height: 340px; 
@@ -85,7 +85,7 @@
     background-color: black;
     color: #fff;
     text-align: center;
-    padding: 5px 0;
+    padding: 5px;
     border-radius: 6px;
     position: absolute;
     z-index: 1;
@@ -93,4 +93,10 @@
 
 .tooltip:hover .tooltiptext {
     visibility: visible;
+}
+
+#FFnS_CloseSettingsBtn {
+	float:right;
+	width: 24px;
+	height: 24px;
 }

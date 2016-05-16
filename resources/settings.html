@@ -1,6 +1,6 @@
 <div id="FFnS_settingsDivContainer">
     <div id="FFnS_settingsDiv">
-        <img id="FFnS_CloseSettingsBtn" src="{{closeIconLink}}" class="pageAction requiresLogin" style="float:right;display:inline-block;width: 24px; height: 24px;">
+        <img id="FFnS_CloseSettingsBtn" src="{{closeIconLink}}" class="pageAction requiresLogin">
         <span>
             <span class="FFnS_settings_span tooltip">
                 Filtering enabled
@@ -20,9 +20,9 @@
             <span class="FFnS_settings_span">Sorting enabled</span>
             <input id="FFnS_sortingEnabled" style="vertical-align: middle;" type="checkbox">
             <select id="FFnS_sortingType" class="FFnS_margin_element" style="vertical-align: middle; font-size:12px;">
-                <option value="{{SortingType.PopularityDesc}}">Sort by number of recommendations (highest to lowest)</option>
+                <option value="{{SortingType.PopularityDesc}}">Sort by popularity (highest to lowest)</option>
                 <option value="{{SortingType.TitleAsc}}">Sort by title (a -&gt; z)</option>
-                <option value="{{SortingType.PopularityAsc}}">Sort by number of recommendations (lowest to highest)</option>
+                <option value="{{SortingType.PopularityAsc}}">Sort by popularity (lowest to highest)</option>
                 <option value="{{SortingType.TitleDesc}}">Sort by title (z -&gt; a)</option>
             </select>
         </span>
@@ -34,11 +34,23 @@
             <li class="">
                 <a href="#FFnS_tab_RestrictedOn">Restricting keywords</a>
             </li>
+            <li class="">
+                <a href="#FFnS_tab_ImportMenu">Import settings</a>
+            </li>
         </ul>
                 
         <div id="FFnS_tabs_content">
             {{FilteringList.Type.FilteredOut}}
             {{FilteringList.Type.RestrictedOn}}
+            <div id="FFnS_tab_ImportMenu" class="FFnS_Tab_Menu">
+                <span class="FFnS_settings_span">Subscription to import settings from</span>
+                <select id="FFnS_ImportMenu_SubscriptionSelect" class="FFnS_margin_element">
+                    {{ImportMenu.SubscriptionOptions}}
+                </select>
+                <div>
+                    <button id="FFnS_ImportMenu_Submit" class="FFnS_margin_element">Import</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>

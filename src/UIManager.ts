@@ -22,11 +22,12 @@ export class UIManager {
     enableRestrictingCheckId = this.getHTMLId("enableRestricting");
     sortingTypeId = this.getHTMLId("sortingType");
     sortingEnabledId = this.getHTMLId("sortingEnabled");
-    
+
     setUpSettingsMenu() {
+        var urls = this.subscriptionManager.getAllSubscriptionURLs();
         this.initSettingsMenu();
         this.initSettingsBtns();
-        this.setUpSettingsMenuEvents();
+        this.setUpSettingsEvents();
     }
 
     initSettingsMenu() {
@@ -41,7 +42,8 @@ export class UIManager {
             { name: "SortingType.PopularityAsc", value: SortingType.PopularityAsc },
             { name: "SortingType.TitleDesc", value: SortingType.TitleDesc },
             { name: "FilteringList.Type.FilteredOut", value: this.getFilteringListHTML(FilteringType.FilteredOut) },
-            { name: "FilteringList.Type.RestrictedOn", value: this.getFilteringListHTML(FilteringType.RestrictedOn) }
+            { name: "FilteringList.Type.RestrictedOn", value: this.getFilteringListHTML(FilteringType.RestrictedOn) },
+            { name: "ImportMenu.SubscriptionOptions", value: this.getImportKeywordsSubscriptionOptions() }
         ]);
         $("body").prepend(settingsHtml);
 
@@ -55,12 +57,15 @@ export class UIManager {
             $(tab).show();
         });
         var firstDiv = $("#" + tabsContentContainerId + " > div").first().show();
+
+        this.updateSettings();
     }
 
     getFilteringListHTML(type: FilteringType): string {
         var ids = this.getIds(type);
+
         var filteringList = this.subscription.getFilteringList(type);
-        
+
         var filteringKeywordsHTML = "";
         for (var i = 0; i < filteringList.length; i++) {
             var keyword = filteringList[i];
@@ -71,7 +76,7 @@ export class UIManager {
             ]);
             filteringKeywordsHTML += filteringKeywordHTML;
         }
-        
+
         var filteringListHTML = bindMarkup(templates.filteringListHTML, [
             { name: "FilteringTypeTabId", value: this.getFilteringTypeTabId(type) },
             { name: "plusBtnId", value: this.getHTMLId(ids.plusBtnId) },
@@ -81,6 +86,15 @@ export class UIManager {
             { name: "filetring.keywords", value: filteringKeywordsHTML }
         ]);
         return filteringListHTML;
+    }
+
+    getImportKeywordsSubscriptionOptions(): string {
+        var optionsHTML = "";
+        var urls = this.subscriptionManager.getAllSubscriptionURLs();
+        urls.forEach((url) => {
+            optionsHTML += bindMarkup(templates.optionHTML, [{ name: "value", value: url }]);
+        })
+        return optionsHTML;
     }
 
     initSettingsBtns() {
@@ -99,50 +113,36 @@ export class UIManager {
         });
     }
 
-    setUpSettingsMenuEvents() {
+    setUpSettingsEvents() {
         var this_ = this;
 
-        // Set checkbox & select boxes correct state
-        var filteringCheck = $id(this.enableFilteringCheckId);
-        var restrictingCheck = $id(this.enableRestrictingCheckId);
-        var sortingCheck = $id(this.sortingEnabledId);
-        var sortingTypeSelect = $id(this.sortingTypeId);
-        filteringCheck.prop('checked', this.subscription.isFilteringEnabled());
-        restrictingCheck.prop('checked', this.subscription.isRestrictingEnabled());
-        sortingCheck.prop('checked', this.subscription.isSortingEnabled());
-        sortingTypeSelect.val(this.subscription.getSortingType());
-
         // Checkbox & select boxes events
-        filteringCheck.change(function () {
+        $id(this.enableFilteringCheckId).change(function () {
             this_.subscription.setFilteringEnabled($(this).is(':checked'));
-            this_.refreshTopics();
+            this_.refreshFilteringAndSorting();
         });
-        restrictingCheck.change(function () {
+        $id(this.enableRestrictingCheckId).change(function () {
             this_.subscription.setRestrictingEnabled($(this).is(':checked'));
-            this_.refreshTopics();
+            this_.refreshFilteringAndSorting();
         });
-        sortingCheck.change(function () {
+        $id(this.sortingEnabledId).change(function () {
             this_.subscription.setSortingEnabled($(this).is(':checked'));
-            this_.refreshTopics();
+            this_.refreshFilteringAndSorting();
         });
+        var sortingTypeSelect = $id(this.sortingTypeId);
         sortingTypeSelect.change(function () {
             this_.subscription.setSortingType(sortingTypeSelect.val());
-            this_.refreshTopics();
+            this_.refreshFilteringAndSorting();
         });
 
         $id(this.closeBtnId).click(function () {
             $id(this_.settingsDivContainerId).toggle();
         })
 
-        this.setUpFilteringListEvents();
-    }
+        $id("FFnS_ImportMenu_Submit").click(() => {
+            this.importKeywords();
+        });
 
-    refreshFilteringList(type: FilteringType) {
-        var keywordListHtml = this.getFilteringListHTML(type);
-        $id(this.getFilteringTypeTabId(type)).replaceWith(keywordListHtml);
-        $id(this.getFilteringTypeTabId(type)).show();
-
-        this.refreshTopics();
         this.setUpFilteringListEvents();
     }
 
@@ -158,7 +158,7 @@ export class UIManager {
             var keyword = prompt("Add keyword", "");
             if (keyword !== null) {
                 this.subscription.addKeyword(keyword, type);
-                this.refreshFilteringList(type);
+                this.updateFilteringList(type);
             }
         });
 
@@ -166,7 +166,7 @@ export class UIManager {
         $id(this.getHTMLId(ids.eraseBtnId)).click(() => {
             if (confirm("Erase all the keyword of this list ?")) {
                 this.subscription.reset(type);
-                this.refreshFilteringList(type);
+                this.updateFilteringList(type);
             }
         });
 
@@ -178,15 +178,69 @@ export class UIManager {
                 var keyword = $(this).text();
                 if (confirm("Delete the keyword ?")) {
                     t.subscription.removeKeyword(keyword, type);
-                    t.refreshFilteringList(type);
+                    t.updateFilteringList(type);
                 }
             });
         }
     }
 
-    refreshTopics() {
-        this.articleManager.resetSorting();
-        $(cst.topicSelector).toArray().forEach(this.articleManager.refreshTopic, this.articleManager);
+    updatePage() {
+        this.resetPage();
+        this.updateSubscription();
+        this.updateMenu();
+    }
+
+    resetPage() {
+        this.articleManager.resetArticles();
+    }
+
+    updateSubscription() {
+        this.subscription = this.subscriptionManager.updateSubscription();
+        this.articleManager.setSubscription(this.subscription);
+    }
+
+    updateMenu() {
+        this.updateSettings();
+        getFilteringTypes().forEach((type) => {
+            this.updateFilteringList(type);
+        });
+    }
+
+    updateSettings() {
+        $id(this.enableFilteringCheckId).prop('checked', this.subscription.isFilteringEnabled());
+        $id(this.enableRestrictingCheckId).prop('checked', this.subscription.isRestrictingEnabled());
+        $id(this.sortingEnabledId).prop('checked', this.subscription.isSortingEnabled());
+        $id(this.sortingTypeId).val(this.subscription.getSortingType());
+    }
+
+    updateFilteringList(type: FilteringType) {
+        var keywordListHtml = this.getFilteringListHTML(type);
+        var displayProp = $id(this.getFilteringTypeTabId(type)).css('display');
+        var isVisible = displayProp != null && displayProp != 'none';
+        $id(this.getFilteringTypeTabId(type)).replaceWith(keywordListHtml);
+        if (isVisible) {
+            $id(this.getFilteringTypeTabId(type)).show();
+        }
+
+        this.refreshFilteringAndSorting();
+        this.setUpFilteringListEvents();
+    }
+
+    addArticle(articleNode: Node) {
+        this.articleManager.addArticle(articleNode);
+    }
+
+    refreshFilteringAndSorting() {
+        this.articleManager.resetArticles();
+        $(cst.articleSelector).toArray().forEach(this.articleManager.addArticle, this.articleManager);
+    }
+
+    importKeywords() {
+        var selectedURL: string = $id("FFnS_ImportMenu_SubscriptionSelect").val();
+        if (selectedURL && confirm("Import keywords from the subscription url /" + selectedURL + " ?")) {
+            this.subscriptionManager.importKeywords(selectedURL);
+            this.updateMenu();
+        }
     }
 
     getHTMLId(id: string) {
@@ -207,25 +261,6 @@ export class UIManager {
 
     getFilteringTypeTabId(filteringType: FilteringType) {
         return this.getHTMLId("tab_" + FilteringType[filteringType]);
-    }
-
-    refreshPage() {
-        this.refreshSubscription()
-        this.resetSorting();
-    }
-
-    refreshSubscription() {
-        var url = document.URL;
-        this.subscription = this.subscriptionManager.updateSubscription(url);
-        this.articleManager.setSubscription(this.subscription);
-    }
-
-    resetSorting() {
-        this.articleManager.resetSorting();
-    }
-
-    refreshTopic(topicNode: Node) {
-        this.articleManager.refreshTopic(topicNode);
     }
 
     getIds(type: FilteringType) {

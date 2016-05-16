@@ -10,13 +10,9 @@ $(document).ready(function () {
 
     NodeCreationObserver.onCreation(cst.pageChangeSelector, function() {
         console.log("Feedly page fully loaded");
-        uiManager.refreshPage();
+        uiManager.updatePage();
         uiManager.setUpSettingsMenu();
-
-        // New topics listener
-        NodeCreationObserver.onCreation(cst.topicSelector, uiManagerBind(uiManager.refreshTopic));
-
-        // Reset titles array when changing page
-        NodeCreationObserver.onCreation(cst.pageChangeSelector, uiManagerBind(uiManager.refreshPage));
+        NodeCreationObserver.onCreation(cst.articleSelector, uiManagerBind(uiManager.addArticle));
+        NodeCreationObserver.onCreation(cst.pageChangeSelector, uiManagerBind(uiManager.updatePage));
     }, true);
 });

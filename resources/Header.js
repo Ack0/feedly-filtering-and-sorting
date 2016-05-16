@@ -13,4 +13,5 @@
 // @version     1.0.0
 // @grant       GM_setValue
 // @grant       GM_getValue
+// @grant       GM_listValues
 // ==/UserScript==
