@@ -10,7 +10,9 @@ var cst = {
 	"articleSelector": "#section0_column0 > div",
 	"pageChangeSelector": "h1#feedlyTitleBar > .hhint",
 	"articleTitleAttribute": "data-title",
-	"nbrRecommendationsSelector": ".nbrRecommendations",
+	"popularitySelector": ".nbrRecommendations",
+	"unreadCountSelector" : "#feedlyTitleBar [class*='UnreadCount']",
+	"fullyLoadedArticlesSelector" : "#fullyLoadedFollowing" 
 }
 
 declare module "constants" {

@@ -26,7 +26,9 @@ var cst = {
     "articleSelector": "#section0_column0 > div",
     "pageChangeSelector": "h1#feedlyTitleBar > .hhint",
     "articleTitleAttribute": "data-title",
-    "nbrRecommendationsSelector": ".nbrRecommendations",
+    "popularitySelector": ".nbrRecommendations",
+    "unreadCountSelector": "#feedlyTitleBar [class*='UnreadCount']",
+    "fullyLoadedArticlesSelector": "#fullyLoadedFollowing"
 };
 
 var exported = {};
@@ -189,8 +191,10 @@ var SubscriptionManager = (function () {
     function SubscriptionManager() {
         this.dao = new SubscriptionDAO();
         this.urlPrefixPattern = new RegExp(cst.urlPrefixPattern, "i");
+        this.currentUnreadCount = 0;
     }
     SubscriptionManager.prototype.updateSubscription = function () {
+        this.updateUnreadCount();
         var url = this.getSubscriptionURL();
         return this.currentSubscription = this.dao.load(url);
     };
@@ -206,20 +210,29 @@ var SubscriptionManager = (function () {
         url = url.replace(this.urlPrefixPattern, "");
         return url;
     };
+    SubscriptionManager.prototype.updateUnreadCount = function () {
+        var unreadCountHint = $(cst.unreadCountSelector).text().trim();
+        var unreadCountStr = unreadCountHint.split(" ")[0];
+        var unreadCount = Number(unreadCountStr);
+        this.currentUnreadCount = isNaN(unreadCount) ? 0 : unreadCount;
+    };
+    SubscriptionManager.prototype.getCurrentUnreadCount = function () {
+        return this.currentUnreadCount;
+    };
     return SubscriptionManager;
 }());
 
 var ArticleManager = (function () {
     function ArticleManager() {
         this.titles = [];
-        this.nbrRecommendationsArray = [];
+        this.popularityArray = [];
     }
     ArticleManager.prototype.setSubscription = function (subscription) {
         this.subscription = subscription;
     };
     ArticleManager.prototype.resetArticles = function () {
         this.titles = [];
-        this.nbrRecommendationsArray = [];
+        this.popularityArray = [];
     };
     ArticleManager.prototype.addArticle = function (articleNode) {
         var article = $(articleNode);
@@ -271,22 +284,22 @@ var ArticleManager = (function () {
             this.insertIndex(article, index);
         }
         else if (sortingType == SortingType.PopularityAsc || sortingType == SortingType.PopularityDesc) {
-            var nbrRecommendationsStr = article.find(cst.nbrRecommendationsSelector).text().trim();
-            nbrRecommendationsStr = nbrRecommendationsStr.replace("+", "");
-            if (nbrRecommendationsStr.indexOf("K") > -1) {
-                nbrRecommendationsStr = nbrRecommendationsStr.replace("K", "");
-                nbrRecommendationsStr += "000";
+            var popularityStr = article.find(cst.popularitySelector).text().trim();
+            popularityStr = popularityStr.replace("+", "");
+            if (popularityStr.indexOf("K") > -1) {
+                popularityStr = popularityStr.replace("K", "");
+                popularityStr += "000";
             }
-            var nbrRecommendations = Number(nbrRecommendationsStr);
-            if (nbrRecommendations < 100) {
-                nbrRecommendations = 1;
+            var popularityNumber = Number(popularityStr);
+            if (popularityNumber < 100) {
+                popularityNumber = 1;
             }
-            this.nbrRecommendationsArray.push(nbrRecommendations);
-            this.nbrRecommendationsArray.sort(function (a, b) {
+            this.popularityArray.push(popularityNumber);
+            this.popularityArray.sort(function (a, b) {
                 var i = ((sortingType == SortingType.PopularityAsc) ? -1 : 1);
                 return (b - a) * i;
             });
-            index = this.nbrRecommendationsArray.lastIndexOf(nbrRecommendations);
+            index = this.popularityArray.lastIndexOf(popularityNumber);
             this.insertIndex(article, index);
         }
     };
@@ -305,11 +318,11 @@ var ArticleManager = (function () {
 }());
 
 var templates = {
-    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <span> <span class='FFnS_settings_span tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_enableFiltering' style='vertical-align: middle;' type='checkbox'> </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_enableRestricting' style='vertical-align: middle;' type='checkbox'> </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_sortingEnabled' style='vertical-align: middle;' type='checkbox'> <select id='FFnS_sortingType' class='FFnS_margin_element' style='vertical-align: middle; font-size:12px;'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li class=''> <a href='#FFnS_tab_ImportMenu'>Import settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span class='FFnS_settings_span'>Subscription to import settings from</span> <select id='FFnS_ImportMenu_SubscriptionSelect' class='FFnS_margin_element'> {{ImportMenu.SubscriptionOptions}} </select> <div> <button id='FFnS_ImportMenu_Submit' class='FFnS_margin_element'>Import</button> </div> </div> </div> </div> </div>",
+    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <div class='FFnS_settings'> <span class='FFnS_settings_header'>General settings: </span> </div> <div class='FFnS_settings'> <span class='FFnS_settings_header'>Subscription settings: </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_enableFiltering' style='vertical-align: middle;' type='checkbox'> </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_enableRestricting' style='vertical-align: middle;' type='checkbox'> </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_sortingEnabled' style='vertical-align: middle;' type='checkbox'> <select id='FFnS_sortingType' class='FFnS_margin_element' style='vertical-align: middle; font-size:12px;'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li class=''> <a href='#FFnS_tab_ImportMenu'>Import subscription settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span class='FFnS_settings_span'>Import subscription settings from url: </span> <select id='FFnS_ImportMenu_SubscriptionSelect' class='FFnS_margin_element'> {{ImportMenu.SubscriptionOptions}} </select> <div><button id='FFnS_ImportMenu_Submit'>Import</button></div> </div> </div> </div> </div> </div>",
     "filteringListHTML": "<div id='{{FilteringTypeTabId}}' class='FFnS_Tab_Menu'> <span id='{{plusBtnId}}'> <img src='{{plusIconLink}}' class='FFnS_icon' /> </span> <span id='{{eraseBtnId}}'> <img src='{{eraseIconLink}}' class='FFnS_icon' /> </span> {{filetring.keywords}} </div> ",
     "filteringKeywordHTML": "<button id='{{keywordId}}' type='button' class='FFnS_keyword'>{{keyword}}</button>",
     "optionHTML": "<option value='{{value}}'>{{value}}</option>",
-    "styleCSS": "#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 400px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } #FFnS_tabs_menu { height: 30px; clear: both; margin: 0px; padding: 0px; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_margin_element { margin-left: 2% } .FFnS_Tab_Menu { display: none; width: 100%; max-height: 340px; overflow-y: auto; overflow-x: hidden; } .FFnS_settings_span { display: inline; vertical-align: middle; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; } .tooltip .tooltiptext { visibility: hidden; width: 120px; background-color: black; color: #fff; text-align: center; padding: 5px; border-radius: 6px; position: absolute; z-index: 1; } .tooltip:hover .tooltiptext { visibility: visible; } #FFnS_CloseSettingsBtn { float:right; width: 24px; height: 24px; }"
+    "styleCSS": "#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 400px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } .FFnS_settings + .FFnS_settings { margin-top: 1%; } .FFnS_settings > :not(span) { margin-left: 2%; } .FFnS_settings_header { color: #333690; } #FFnS_tabs_menu { height: 30px; clear: both; margin-top: 1%; margin-bottom: 0%; padding: 0px; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_margin_element { margin-left: 2% } .FFnS_Tab_Menu { display: none; width: 100%; max-height: 340px; overflow-y: auto; overflow-x: hidden; } .FFnS_settings_span { display: inline; vertical-align: middle; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; } .tooltip .tooltiptext { visibility: hidden; width: 120px; background-color: black; color: #fff; text-align: center; padding: 5px; border-radius: 6px; position: absolute; z-index: 1; } .tooltip:hover .tooltiptext { visibility: visible; } #FFnS_CloseSettingsBtn { float:right; width: 24px; height: 24px; }"
 };
 
 var UIManager = (function () {
@@ -318,8 +331,6 @@ var UIManager = (function () {
         this.articleManager = new ArticleManager();
         this.keywordToId = {};
         this.idCount = 1;
-        this.settingsDivId = this.getHTMLId("settingsDiv");
-        this.settingsBtnId = this.getHTMLId("settingsBtn");
         this.settingsDivContainerId = this.getHTMLId("settingsDivContainer");
         this.closeBtnId = this.getHTMLId("CloseSettingsBtn");
         this.enableFilteringCheckId = this.getHTMLId("enableFiltering");
@@ -495,17 +506,28 @@ var UIManager = (function () {
     };
     UIManager.prototype.updateFilteringList = function (type) {
         var keywordListHtml = this.getFilteringListHTML(type);
-        var displayProp = $id(this.getFilteringTypeTabId(type)).css('display');
-        var isVisible = displayProp != null && displayProp != 'none';
+        var wasVisible = this.isVisible($id(this.getFilteringTypeTabId(type)));
         $id(this.getFilteringTypeTabId(type)).replaceWith(keywordListHtml);
-        if (isVisible) {
+        if (wasVisible) {
             $id(this.getFilteringTypeTabId(type)).show();
         }
         this.refreshFilteringAndSorting();
         this.setUpFilteringListEvents();
     };
     UIManager.prototype.addArticle = function (articleNode) {
+        this.loadMoreArticles();
         this.articleManager.addArticle(articleNode);
+    };
+    UIManager.prototype.loadMoreArticles = function () {
+        if (this.subscriptionManager.getCurrentUnreadCount() == 0) {
+            return;
+        }
+        if (this.isVisible($(cst.fullyLoadedArticlesSelector))) {
+            window.scrollTo(0, 0);
+            return;
+        }
+        var currentScrollHeight = document.body.scrollHeight;
+        window.scrollTo(0, currentScrollHeight);
     };
     UIManager.prototype.refreshFilteringAndSorting = function () {
         this.articleManager.resetArticles();
@@ -529,7 +551,7 @@ var UIManager = (function () {
         return this.getHTMLId(keywordListId + "_" + this.keywordToId[keyword]);
     };
     UIManager.prototype.getBtnId = function (elementId) {
-        return this.getHTMLId(this.settingsBtnId + "_" + elementId);
+        return this.getHTMLId("settingsBtn_" + elementId);
     };
     UIManager.prototype.getFilteringTypeTabId = function (filteringType) {
         return this.getHTMLId("tab_" + FilteringType[filteringType]);
@@ -541,6 +563,10 @@ var UIManager = (function () {
             plusBtnId: "Add_" + id,
             eraseBtnId: "DeleteAll_" + id
         };
+    };
+    UIManager.prototype.isVisible = function (e) {
+        var displayProp = e.css('display');
+        return displayProp != null && displayProp != 'none';
     };
     return UIManager;
 }());

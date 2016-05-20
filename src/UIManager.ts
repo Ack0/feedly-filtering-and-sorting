@@ -14,8 +14,6 @@ export class UIManager {
     keywordToId = {};
     idCount = 1;
 
-    settingsDivId = this.getHTMLId("settingsDiv");
-    settingsBtnId = this.getHTMLId("settingsBtn");
     settingsDivContainerId = this.getHTMLId("settingsDivContainer");
     closeBtnId = this.getHTMLId("CloseSettingsBtn");
     enableFilteringCheckId = this.getHTMLId("enableFiltering");
@@ -189,7 +187,7 @@ export class UIManager {
         this.updateSubscription();
         this.updateMenu();
     }
-
+    
     resetPage() {
         this.articleManager.resetArticles();
     }
@@ -215,21 +213,33 @@ export class UIManager {
 
     updateFilteringList(type: FilteringType) {
         var keywordListHtml = this.getFilteringListHTML(type);
-        var displayProp = $id(this.getFilteringTypeTabId(type)).css('display');
-        var isVisible = displayProp != null && displayProp != 'none';
+        var wasVisible = this.isVisible($id(this.getFilteringTypeTabId(type)));
         $id(this.getFilteringTypeTabId(type)).replaceWith(keywordListHtml);
-        if (isVisible) {
+        if (wasVisible) {
             $id(this.getFilteringTypeTabId(type)).show();
         }
 
         this.refreshFilteringAndSorting();
         this.setUpFilteringListEvents();
     }
-
+    
     addArticle(articleNode: Node) {
+        this.loadMoreArticles();
         this.articleManager.addArticle(articleNode);
     }
 
+    loadMoreArticles() {
+        if(this.subscriptionManager.getCurrentUnreadCount() == 0) {
+            return;
+        }
+        if(this.isVisible($(cst.fullyLoadedArticlesSelector))) {
+            window.scrollTo(0, 0);
+            return;
+        }
+        var currentScrollHeight = document.body.scrollHeight;
+        window.scrollTo(0, currentScrollHeight);
+    }
+    
     refreshFilteringAndSorting() {
         this.articleManager.resetArticles();
         $(cst.articleSelector).toArray().forEach(this.articleManager.addArticle, this.articleManager);
@@ -256,7 +266,7 @@ export class UIManager {
     }
 
     getBtnId(elementId: string): string {
-        return this.getHTMLId(this.settingsBtnId + "_" + elementId);
+        return this.getHTMLId("settingsBtn_" + elementId);
     }
 
     getFilteringTypeTabId(filteringType: FilteringType) {
@@ -270,6 +280,11 @@ export class UIManager {
             plusBtnId: "Add_" + id,
             eraseBtnId: "DeleteAll_" + id
         };
+    }
+
+    isVisible(e: JQuery) {
+        var displayProp = e.css('display');
+        return displayProp != null && displayProp != 'none';
     }
 
 }

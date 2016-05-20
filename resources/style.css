@@ -21,10 +21,23 @@
 	opacity: 1;
 }
 
+.FFnS_settings + .FFnS_settings {
+	margin-top: 1%;
+}
+
+.FFnS_settings > :not(span) {
+	margin-left: 2%;
+}
+
+.FFnS_settings_header {
+	color: #333690;
+}
+
 #FFnS_tabs_menu {
 	height: 30px;
 	clear: both;
-	margin: 0px;
+	margin-top: 1%;
+	margin-bottom: 0%;
 	padding: 0px;
 }
 #FFnS_tabs_menu li {

@@ -5,7 +5,7 @@ import {Subscription} from "./Subscription";
 
 export class ArticleManager {
     titles = [];
-    nbrRecommendationsArray = [];
+    popularityArray = [];
     private subscription: Subscription;
 
     setSubscription(subscription: Subscription) {
@@ -14,7 +14,7 @@ export class ArticleManager {
 
     resetArticles() {
         this.titles = [];
-        this.nbrRecommendationsArray = [];
+        this.popularityArray = [];
     }
 
     addArticle(articleNode: Node) {
@@ -68,22 +68,22 @@ export class ArticleManager {
             this.insertIndex(article, index);
         }
         else if (sortingType == SortingType.PopularityAsc || sortingType == SortingType.PopularityDesc) {
-            var nbrRecommendationsStr = article.find(cst.nbrRecommendationsSelector).text().trim();
-            nbrRecommendationsStr = nbrRecommendationsStr.replace("+", "");
-            if (nbrRecommendationsStr.indexOf("K") > -1) {
-                nbrRecommendationsStr = nbrRecommendationsStr.replace("K", "");
-                nbrRecommendationsStr += "000";
+            var popularityStr = article.find(cst.popularitySelector).text().trim();
+            popularityStr = popularityStr.replace("+", "");
+            if (popularityStr.indexOf("K") > -1) {
+                popularityStr = popularityStr.replace("K", "");
+                popularityStr += "000";
             }
-            var nbrRecommendations = Number(nbrRecommendationsStr);
-            if (nbrRecommendations < 100) {
-                nbrRecommendations = 1;
+            var popularityNumber = Number(popularityStr);
+            if (popularityNumber < 100) {
+                popularityNumber = 1;
             }
-            this.nbrRecommendationsArray.push(nbrRecommendations);
-            this.nbrRecommendationsArray.sort(function (a, b) {
+            this.popularityArray.push(popularityNumber);
+            this.popularityArray.sort(function (a, b) {
                 var i = ((sortingType == SortingType.PopularityAsc) ? -1 : 1);
                 return (b - a) * i;
             });
-            index = this.nbrRecommendationsArray.lastIndexOf(nbrRecommendations);
+            index = this.popularityArray.lastIndexOf(popularityNumber);
             this.insertIndex(article, index);
         }
     }
