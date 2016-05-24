@@ -1,5 +1,5 @@
 {
-  "ambientDependencies": {
+  "globalDependencies": {
     "greasemonkey": "registry:dt/greasemonkey#0.0.0+20160316155526",
     "jquery": "registry:dt/jquery#1.10.0+20160316155526"
   }
