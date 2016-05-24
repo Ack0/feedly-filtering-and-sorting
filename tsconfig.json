@@ -10,8 +10,8 @@
     ],
     "files": [
         "src/ArticleManager.ts",
-        "src/Constants.ts",
         "src/DataTypes.ts",
+        "src/Externals.ts",
         "src/Main.ts",
         "src/Subscription.ts",
         "src/SubscriptionDAO.ts",

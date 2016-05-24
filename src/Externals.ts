@@ -1,4 +1,4 @@
-var cst = {
+var ext = {
 	"filterIconLink": "https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/128/empty_filter.png",
 	"plusIconLink": "https://cdn0.iconfinder.com/data/icons/social-messaging-ui-color-shapes/128/add-circle-blue-128.png",
 	"eraseIconLink": "https://cdn2.iconfinder.com/data/icons/large-glossy-svg-icons/512/erase_delete_remove_wipe_out-128.png",
@@ -13,8 +13,4 @@ var cst = {
 	"popularitySelector": ".nbrRecommendations",
 	"unreadCountSelector" : "#feedlyTitleBar [class*='UnreadCount']",
 	"fullyLoadedArticlesSelector" : "#fullyLoadedFollowing" 
-}
-
-declare module "constants" {
-    export = cst;
 }

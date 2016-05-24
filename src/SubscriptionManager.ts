@@ -7,7 +7,7 @@ import {SubscriptionDAO} from "./SubscriptionDAO";
 export class SubscriptionManager {
     private currentSubscription : Subscription;
     private dao = new SubscriptionDAO();
-    private urlPrefixPattern = new RegExp(cst.urlPrefixPattern, "i");
+    private urlPrefixPattern = new RegExp(ext.urlPrefixPattern, "i");
     private currentUnreadCount = 0;
     
     updateSubscription() : Subscription {
@@ -32,7 +32,7 @@ export class SubscriptionManager {
     }
     
     updateUnreadCount() {
-        var unreadCountHint = $(cst.unreadCountSelector).text().trim();
+        var unreadCountHint = $(ext.unreadCountSelector).text().trim();
         var unreadCountStr = unreadCountHint.split(" ")[0];
         var unreadCount = Number(unreadCountStr);
         this.currentUnreadCount = isNaN(unreadCount) ? 0 : unreadCount;

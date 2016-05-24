@@ -19,7 +19,7 @@ export class ArticleManager {
 
     addArticle(articleNode: Node) {
         var article = $(articleNode);
-        var title = article.attr(cst.articleTitleAttribute).toLowerCase();
+        var title = article.attr(ext.articleTitleAttribute).toLowerCase();
         if (this.subscription.isFilteringEnabled() || this.subscription.isRestrictingEnabled()) {
             var restrictedOnKeywords = this.subscription.getFilteringList(FilteringType.RestrictedOn);
             var filteredOutKeywords = this.subscription.getFilteringList(FilteringType.FilteredOut);
@@ -58,7 +58,7 @@ export class ArticleManager {
     sortArticle(article: JQuery) {
         var sortingType = this.subscription.getSortingType();
         if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
-            var title = article.attr(cst.articleTitleAttribute).toLowerCase();
+            var title = article.attr(ext.articleTitleAttribute).toLowerCase();
             this.titles.push(title);
             this.titles.sort();
             if (sortingType == SortingType.TitleDesc) {
@@ -68,7 +68,7 @@ export class ArticleManager {
             this.insertIndex(article, index);
         }
         else if (sortingType == SortingType.PopularityAsc || sortingType == SortingType.PopularityDesc) {
-            var popularityStr = article.find(cst.popularitySelector).text().trim();
+            var popularityStr = article.find(ext.popularitySelector).text().trim();
             popularityStr = popularityStr.replace("+", "");
             if (popularityStr.indexOf("K") > -1) {
                 popularityStr = popularityStr.replace("K", "");

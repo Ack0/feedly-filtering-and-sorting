@@ -16,7 +16,7 @@
 // @grant       GM_listValues
 // ==/UserScript==
 
-var cst = {
+var ext = {
     "filterIconLink": "https://cdn2.iconfinder.com/data/icons/windows-8-metro-style/128/empty_filter.png",
     "plusIconLink": "https://cdn0.iconfinder.com/data/icons/social-messaging-ui-color-shapes/128/add-circle-blue-128.png",
     "eraseIconLink": "https://cdn2.iconfinder.com/data/icons/large-glossy-svg-icons/512/erase_delete_remove_wipe_out-128.png",
@@ -190,7 +190,7 @@ var SubscriptionDAO = (function () {
 var SubscriptionManager = (function () {
     function SubscriptionManager() {
         this.dao = new SubscriptionDAO();
-        this.urlPrefixPattern = new RegExp(cst.urlPrefixPattern, "i");
+        this.urlPrefixPattern = new RegExp(ext.urlPrefixPattern, "i");
         this.currentUnreadCount = 0;
     }
     SubscriptionManager.prototype.updateSubscription = function () {
@@ -211,7 +211,7 @@ var SubscriptionManager = (function () {
         return url;
     };
     SubscriptionManager.prototype.updateUnreadCount = function () {
-        var unreadCountHint = $(cst.unreadCountSelector).text().trim();
+        var unreadCountHint = $(ext.unreadCountSelector).text().trim();
         var unreadCountStr = unreadCountHint.split(" ")[0];
         var unreadCount = Number(unreadCountStr);
         this.currentUnreadCount = isNaN(unreadCount) ? 0 : unreadCount;
@@ -236,7 +236,7 @@ var ArticleManager = (function () {
     };
     ArticleManager.prototype.addArticle = function (articleNode) {
         var article = $(articleNode);
-        var title = article.attr(cst.articleTitleAttribute).toLowerCase();
+        var title = article.attr(ext.articleTitleAttribute).toLowerCase();
         if (this.subscription.isFilteringEnabled() || this.subscription.isRestrictingEnabled()) {
             var restrictedOnKeywords = this.subscription.getFilteringList(FilteringType.RestrictedOn);
             var filteredOutKeywords = this.subscription.getFilteringList(FilteringType.FilteredOut);
@@ -274,7 +274,7 @@ var ArticleManager = (function () {
     ArticleManager.prototype.sortArticle = function (article) {
         var sortingType = this.subscription.getSortingType();
         if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
-            var title = article.attr(cst.articleTitleAttribute).toLowerCase();
+            var title = article.attr(ext.articleTitleAttribute).toLowerCase();
             this.titles.push(title);
             this.titles.sort();
             if (sortingType == SortingType.TitleDesc) {
@@ -284,7 +284,7 @@ var ArticleManager = (function () {
             this.insertIndex(article, index);
         }
         else if (sortingType == SortingType.PopularityAsc || sortingType == SortingType.PopularityDesc) {
-            var popularityStr = article.find(cst.popularitySelector).text().trim();
+            var popularityStr = article.find(ext.popularitySelector).text().trim();
             popularityStr = popularityStr.replace("+", "");
             if (popularityStr.indexOf("K") > -1) {
                 popularityStr = popularityStr.replace("K", "");
@@ -349,7 +349,7 @@ var UIManager = (function () {
         var tabsMenuId = this.getHTMLId("tabs_menu");
         var tabsContentContainerId = this.getHTMLId("tabs_content");
         var settingsHtml = bindMarkup(templates.settingsHTML, [
-            { name: "closeIconLink", value: cst.closeIconLink },
+            { name: "closeIconLink", value: ext.closeIconLink },
             { name: "SortingType.PopularityDesc", value: SortingType.PopularityDesc },
             { name: "SortingType.TitleAsc", value: SortingType.TitleAsc },
             { name: "SortingType.PopularityAsc", value: SortingType.PopularityAsc },
@@ -387,9 +387,9 @@ var UIManager = (function () {
         var filteringListHTML = bindMarkup(templates.filteringListHTML, [
             { name: "FilteringTypeTabId", value: this.getFilteringTypeTabId(type) },
             { name: "plusBtnId", value: this.getHTMLId(ids.plusBtnId) },
-            { name: "plusIconLink", value: cst.plusIconLink },
+            { name: "plusIconLink", value: ext.plusIconLink },
             { name: "eraseBtnId", value: this.getHTMLId(ids.eraseBtnId) },
-            { name: "eraseIconLink", value: cst.eraseIconLink },
+            { name: "eraseIconLink", value: ext.eraseIconLink },
             { name: "filetring.keywords", value: filteringKeywordsHTML }
         ]);
         return filteringListHTML;
@@ -404,10 +404,10 @@ var UIManager = (function () {
     };
     UIManager.prototype.initSettingsBtns = function () {
         var this_ = this;
-        $(cst.settingsBtnPredecessorSelector).each(function (i, element) {
+        $(ext.settingsBtnPredecessorSelector).each(function (i, element) {
             var clone = $(element).clone();
             $(clone).attr('id', this_.getBtnId(element.id));
-            $(clone).attr('src', cst.filterIconLink);
+            $(clone).attr('src', ext.filterIconLink);
             $(clone).attr('alt', 'icon');
             $(clone).attr('data-page-action', '');
             $(element).after(clone);
@@ -522,7 +522,7 @@ var UIManager = (function () {
         if (this.subscriptionManager.getCurrentUnreadCount() == 0) {
             return;
         }
-        if (this.isVisible($(cst.fullyLoadedArticlesSelector))) {
+        if (this.isVisible($(ext.fullyLoadedArticlesSelector))) {
             window.scrollTo(0, 0);
             return;
         }
@@ -531,7 +531,7 @@ var UIManager = (function () {
     };
     UIManager.prototype.refreshFilteringAndSorting = function () {
         this.articleManager.resetArticles();
-        $(cst.articleSelector).toArray().forEach(this.articleManager.addArticle, this.articleManager);
+        $(ext.articleSelector).toArray().forEach(this.articleManager.addArticle, this.articleManager);
     };
     UIManager.prototype.importKeywords = function () {
         var selectedURL = $id("FFnS_ImportMenu_SubscriptionSelect").val();
@@ -575,11 +575,11 @@ $(document).ready(function () {
     var uiManager = new UIManager();
     var uiManagerBind = callbackBind(uiManager);
     $("head").append("<style>" + templates.styleCSS + "</style>");
-    NodeCreationObserver.onCreation(cst.pageChangeSelector, function () {
+    NodeCreationObserver.onCreation(ext.pageChangeSelector, function () {
         console.log("Feedly page fully loaded");
         uiManager.updatePage();
         uiManager.setUpSettingsMenu();
-        NodeCreationObserver.onCreation(cst.articleSelector, uiManagerBind(uiManager.addArticle));
-        NodeCreationObserver.onCreation(cst.pageChangeSelector, uiManagerBind(uiManager.updatePage));
+        NodeCreationObserver.onCreation(ext.articleSelector, uiManagerBind(uiManager.addArticle));
+        NodeCreationObserver.onCreation(ext.pageChangeSelector, uiManagerBind(uiManager.updatePage));
     }, true);
 });

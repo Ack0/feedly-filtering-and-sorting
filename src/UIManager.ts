@@ -34,7 +34,7 @@ export class UIManager {
         var tabsContentContainerId = this.getHTMLId("tabs_content");
 
         var settingsHtml = bindMarkup(templates.settingsHTML, [
-            { name: "closeIconLink", value: cst.closeIconLink },
+            { name: "closeIconLink", value: ext.closeIconLink },
             { name: "SortingType.PopularityDesc", value: SortingType.PopularityDesc },
             { name: "SortingType.TitleAsc", value: SortingType.TitleAsc },
             { name: "SortingType.PopularityAsc", value: SortingType.PopularityAsc },
@@ -78,9 +78,9 @@ export class UIManager {
         var filteringListHTML = bindMarkup(templates.filteringListHTML, [
             { name: "FilteringTypeTabId", value: this.getFilteringTypeTabId(type) },
             { name: "plusBtnId", value: this.getHTMLId(ids.plusBtnId) },
-            { name: "plusIconLink", value: cst.plusIconLink },
+            { name: "plusIconLink", value: ext.plusIconLink },
             { name: "eraseBtnId", value: this.getHTMLId(ids.eraseBtnId) },
-            { name: "eraseIconLink", value: cst.eraseIconLink },
+            { name: "eraseIconLink", value: ext.eraseIconLink },
             { name: "filetring.keywords", value: filteringKeywordsHTML }
         ]);
         return filteringListHTML;
@@ -97,10 +97,10 @@ export class UIManager {
 
     initSettingsBtns() {
         var this_ = this;
-        $(cst.settingsBtnPredecessorSelector).each(function (i, element) {
+        $(ext.settingsBtnPredecessorSelector).each(function (i, element) {
             var clone = $(element).clone();
             $(clone).attr('id', this_.getBtnId(element.id));
-            $(clone).attr('src', cst.filterIconLink);
+            $(clone).attr('src', ext.filterIconLink);
             $(clone).attr('alt', 'icon');
             $(clone).attr('data-page-action', '');
             $(element).after(clone);
@@ -232,7 +232,7 @@ export class UIManager {
         if(this.subscriptionManager.getCurrentUnreadCount() == 0) {
             return;
         }
-        if(this.isVisible($(cst.fullyLoadedArticlesSelector))) {
+        if(this.isVisible($(ext.fullyLoadedArticlesSelector))) {
             window.scrollTo(0, 0);
             return;
         }
@@ -242,7 +242,7 @@ export class UIManager {
     
     refreshFilteringAndSorting() {
         this.articleManager.resetArticles();
-        $(cst.articleSelector).toArray().forEach(this.articleManager.addArticle, this.articleManager);
+        $(ext.articleSelector).toArray().forEach(this.articleManager.addArticle, this.articleManager);
     }
 
     importKeywords() {
