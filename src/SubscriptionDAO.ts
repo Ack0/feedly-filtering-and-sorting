@@ -2,6 +2,7 @@
 import {FilteringType, SortingType, getFilteringTypes, getFilteringTypeId} from "./DataTypes";
 import {Subscription} from "./Subscription";
 import {SubscriptionManager} from "./SubscriptionManager";
+import {LocalPersistence} from "./LocalPersistence";
 
 export class SubscriptionDAO {
     private SUBSCRIPTION_ID_PREFIX = "subscription_";
@@ -15,7 +16,7 @@ export class SubscriptionDAO {
 
     load(url: string): Subscription {
         var subscription = new Subscription(this, url);
-        var subscriptionDTO = this.get(this.getSubscriptionId(url), null);
+        var subscriptionDTO = LocalPersistence.get(this.getSubscriptionId(url), null);
         if(subscriptionDTO != null) {
             console.log("Loaded saved subscription: " + JSON.stringify(subscriptionDTO));
             subscription.update(subscriptionDTO, true);            
@@ -37,13 +38,9 @@ export class SubscriptionDAO {
         return this.SUBSCRIPTION_ID_PREFIX + url;
     }
     
-    private get<t>(id: string, defaultValue:t): t {
-        return JSON.parse(GM_getValue(id, JSON.stringify(defaultValue)));
-    }
-
-    private put(id: string, value: any) {
-        GM_setValue(id, JSON.stringify(value, (key, val) => {
+    put(id: string, value: any) {
+        LocalPersistence.put(id, value, (key, val) => {
             if(! (val instanceof SubscriptionDAO)) return val;
-        }));
+        });
     }
 }

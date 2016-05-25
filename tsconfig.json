@@ -12,6 +12,7 @@
         "src/ArticleManager.ts",
         "src/DataTypes.ts",
         "src/Externals.ts",
+        "src/LocalPersistence.ts",
         "src/Main.ts",
         "src/Subscription.ts",
         "src/SubscriptionDAO.ts",

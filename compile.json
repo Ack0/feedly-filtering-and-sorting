@@ -3,6 +3,7 @@
         "Externals",
         "Utils",
         "DataTypes",
+        "LocalPersistence",
         "Subscription",
         "SubscriptionDAO",
         "SubscriptionManager",

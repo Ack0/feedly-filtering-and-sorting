@@ -25,12 +25,25 @@
 	margin-top: 1%;
 }
 
-.FFnS_settings > :not(span) {
+.FFnS_settings > :not(input):not(:first-child) {
 	margin-left: 2%;
 }
 
 .FFnS_settings_header {
 	color: #333690;
+}
+
+.FFnS_settings span + input {
+	vertical-align: middle;
+}
+
+.FFnS_settings select {
+	margin-left: 2% 
+}
+
+FFnS_sortingType {
+	font-size:12px;
+	vertical-align: middle;
 }
 
 #FFnS_tabs_menu {
@@ -58,9 +71,6 @@
 	padding: 1%;
 }
 
-.FFnS_margin_element {
-	margin-left: 2% 
-}
 .FFnS_Tab_Menu {
 	display: none;
 	width: 100%;
@@ -112,4 +122,8 @@
 	float:right;
 	width: 24px;
 	height: 24px;
+}
+
+#FFnS_ImportMenu_Submit {
+	margin-top: 1%;
 }

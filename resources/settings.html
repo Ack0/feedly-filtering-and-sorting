@@ -3,35 +3,43 @@
         <img id="FFnS_CloseSettingsBtn" src="{{closeIconLink}}" class="pageAction requiresLogin">
         <div class="FFnS_settings">
             <span class="FFnS_settings_header">General settings: </span>
+            <span class="FFnS_settings_span tooltip">
+                Auto load unread all articles
+                <span class="tooltiptext">Not applied if there are no unread articles</span>
+            </span>
+            <input id="FFnS_enableAutoLoadMoreArticles" type="checkbox">
+            <span class="FFnS_settings_span tooltip">
+                Use global settings
+                <span class="tooltiptext">Use the global settings (filtering, sorting) for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span>
+            </span>
+            <input id="FFnS_enableGlobalSettings" type="checkbox">
         </div>
         <div class="FFnS_settings">
             <span class="FFnS_settings_header">Subscription settings: </span>
-            <span class="FFnS_margin_element">
+            <span>
                 <span class="FFnS_settings_span tooltip">
                     Filtering enabled
                     <span class="tooltiptext">Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span>
                 </span>
-                <input id="FFnS_enableFiltering" style="vertical-align: middle;" type="checkbox">
-            </span>        
-            <span class="FFnS_margin_element">
+                <input id="FFnS_enableFiltering" type="checkbox">
+            </span>
+            <span>
                 <span class="FFnS_settings_span tooltip">
                     Restricting enabled
                     <span class="tooltiptext">Show only articles that contain at least one of the restricting keywords (not applied if empty)</span>
                 </span>
-                <input id="FFnS_enableRestricting" style="vertical-align: middle;" type="checkbox">
+                <input id="FFnS_enableRestricting" type="checkbox">
             </span>
-            
-            <span class="FFnS_margin_element">
+            <span>
                 <span class="FFnS_settings_span">Sorting enabled</span>
-                <input id="FFnS_sortingEnabled" style="vertical-align: middle;" type="checkbox">
-                <select id="FFnS_sortingType" class="FFnS_margin_element" style="vertical-align: middle; font-size:12px;">
+                <input id="FFnS_sortingEnabled" type="checkbox">
+                <select id="FFnS_sortingType">
                     <option value="{{SortingType.PopularityDesc}}">Sort by popularity (highest to lowest)</option>
                     <option value="{{SortingType.TitleAsc}}">Sort by title (a -&gt; z)</option>
                     <option value="{{SortingType.PopularityAsc}}">Sort by popularity (lowest to highest)</option>
                     <option value="{{SortingType.TitleDesc}}">Sort by title (z -&gt; a)</option>
                 </select>
             </span>
-            
             <ul id="FFnS_tabs_menu">
                 <li class="current">
                     <a href="#FFnS_tab_FilteredOut">Filtering keywords</a>
@@ -43,13 +51,11 @@
                     <a href="#FFnS_tab_ImportMenu">Import subscription settings</a>
                 </li>
             </ul>
-                    
             <div id="FFnS_tabs_content">
-                {{FilteringList.Type.FilteredOut}}
-                {{FilteringList.Type.RestrictedOn}}
+                {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}}
                 <div id="FFnS_tab_ImportMenu" class="FFnS_Tab_Menu">
                     <span class="FFnS_settings_span">Import subscription settings from url: </span>
-                    <select id="FFnS_ImportMenu_SubscriptionSelect" class="FFnS_margin_element">
+                    <select id="FFnS_ImportMenu_SubscriptionSelect">
                         {{ImportMenu.SubscriptionOptions}}
                     </select>
                     <div><button id="FFnS_ImportMenu_Submit">Import</button></div>

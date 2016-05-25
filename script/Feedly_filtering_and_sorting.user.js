@@ -66,6 +66,18 @@ function getFilteringTypeId(type) {
     return FilteringType[type];
 }
 
+var LocalPersistence = (function () {
+    function LocalPersistence() {
+    }
+    LocalPersistence.get = function (id, defaultValue) {
+        return JSON.parse(GM_getValue(id, JSON.stringify(defaultValue)));
+    };
+    LocalPersistence.put = function (id, value, replace) {
+        GM_setValue(id, JSON.stringify(value, replace));
+    };
+    return LocalPersistence;
+}());
+
 var Subscription = (function () {
     function Subscription(subscriptionDAO, url) {
         var _this = this;
@@ -155,7 +167,7 @@ var SubscriptionDAO = (function () {
     };
     SubscriptionDAO.prototype.load = function (url) {
         var subscription = new Subscription(this, url);
-        var subscriptionDTO = this.get(this.getSubscriptionId(url), null);
+        var subscriptionDTO = LocalPersistence.get(this.getSubscriptionId(url), null);
         if (subscriptionDTO != null) {
             console.log("Loaded saved subscription: " + JSON.stringify(subscriptionDTO));
             subscription.update(subscriptionDTO, true);
@@ -175,14 +187,11 @@ var SubscriptionDAO = (function () {
     SubscriptionDAO.prototype.getSubscriptionId = function (url) {
         return this.SUBSCRIPTION_ID_PREFIX + url;
     };
-    SubscriptionDAO.prototype.get = function (id, defaultValue) {
-        return JSON.parse(GM_getValue(id, JSON.stringify(defaultValue)));
-    };
     SubscriptionDAO.prototype.put = function (id, value) {
-        GM_setValue(id, JSON.stringify(value, function (key, val) {
+        LocalPersistence.put(id, value, function (key, val) {
             if (!(val instanceof SubscriptionDAO))
                 return val;
-        }));
+        });
     };
     return SubscriptionDAO;
 }());
@@ -318,11 +327,11 @@ var ArticleManager = (function () {
 }());
 
 var templates = {
-    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <div class='FFnS_settings'> <span class='FFnS_settings_header'>General settings: </span> </div> <div class='FFnS_settings'> <span class='FFnS_settings_header'>Subscription settings: </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_enableFiltering' style='vertical-align: middle;' type='checkbox'> </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_enableRestricting' style='vertical-align: middle;' type='checkbox'> </span> <span class='FFnS_margin_element'> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_sortingEnabled' style='vertical-align: middle;' type='checkbox'> <select id='FFnS_sortingType' class='FFnS_margin_element' style='vertical-align: middle; font-size:12px;'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li class=''> <a href='#FFnS_tab_ImportMenu'>Import subscription settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span class='FFnS_settings_span'>Import subscription settings from url: </span> <select id='FFnS_ImportMenu_SubscriptionSelect' class='FFnS_margin_element'> {{ImportMenu.SubscriptionOptions}} </select> <div><button id='FFnS_ImportMenu_Submit'>Import</button></div> </div> </div> </div> </div> </div>",
+    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <div class='FFnS_settings'> <span class='FFnS_settings_header'>General settings: </span> <span class='FFnS_settings_span tooltip'> Auto load unread all articles <span class='tooltiptext'>Not applied if there are no unread articles</span> </span> <input id='FFnS_enableAutoLoadMoreArticles' type='checkbox'> <span class='FFnS_settings_span tooltip'> Use global settings <span class='tooltiptext'>Use the global settings (filtering, sorting) for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span> </span> <input id='FFnS_enableGlobalSettings' type='checkbox'> </div> <div class='FFnS_settings'> <span class='FFnS_settings_header'>Subscription settings: </span> <span> <span class='FFnS_settings_span tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_enableFiltering' type='checkbox'> </span> <span> <span class='FFnS_settings_span tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_enableRestricting' type='checkbox'> </span> <span> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_sortingEnabled' type='checkbox'> <select id='FFnS_sortingType'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li class=''> <a href='#FFnS_tab_ImportMenu'>Import subscription settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span class='FFnS_settings_span'>Import subscription settings from url: </span> <select id='FFnS_ImportMenu_SubscriptionSelect'> {{ImportMenu.SubscriptionOptions}} </select> <div><button id='FFnS_ImportMenu_Submit'>Import</button></div> </div> </div> </div> </div> </div>",
     "filteringListHTML": "<div id='{{FilteringTypeTabId}}' class='FFnS_Tab_Menu'> <span id='{{plusBtnId}}'> <img src='{{plusIconLink}}' class='FFnS_icon' /> </span> <span id='{{eraseBtnId}}'> <img src='{{eraseIconLink}}' class='FFnS_icon' /> </span> {{filetring.keywords}} </div> ",
     "filteringKeywordHTML": "<button id='{{keywordId}}' type='button' class='FFnS_keyword'>{{keyword}}</button>",
     "optionHTML": "<option value='{{value}}'>{{value}}</option>",
-    "styleCSS": "#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 400px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } .FFnS_settings + .FFnS_settings { margin-top: 1%; } .FFnS_settings > :not(span) { margin-left: 2%; } .FFnS_settings_header { color: #333690; } #FFnS_tabs_menu { height: 30px; clear: both; margin-top: 1%; margin-bottom: 0%; padding: 0px; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_margin_element { margin-left: 2% } .FFnS_Tab_Menu { display: none; width: 100%; max-height: 340px; overflow-y: auto; overflow-x: hidden; } .FFnS_settings_span { display: inline; vertical-align: middle; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; } .tooltip .tooltiptext { visibility: hidden; width: 120px; background-color: black; color: #fff; text-align: center; padding: 5px; border-radius: 6px; position: absolute; z-index: 1; } .tooltip:hover .tooltiptext { visibility: visible; } #FFnS_CloseSettingsBtn { float:right; width: 24px; height: 24px; }"
+    "styleCSS": "#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 400px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } .FFnS_settings + .FFnS_settings { margin-top: 1%; } .FFnS_settings > :not(input):not(:first-child) { margin-left: 2%; } .FFnS_settings_header { color: #333690; } .FFnS_settings span + input { vertical-align: middle; } .FFnS_settings select { margin-left: 2% } FFnS_sortingType { font-size:12px; vertical-align: middle; } #FFnS_tabs_menu { height: 30px; clear: both; margin-top: 1%; margin-bottom: 0%; padding: 0px; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_Tab_Menu { display: none; width: 100%; max-height: 340px; overflow-y: auto; overflow-x: hidden; } .FFnS_settings_span { display: inline; vertical-align: middle; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; } .tooltip .tooltiptext { visibility: hidden; width: 120px; background-color: black; color: #fff; text-align: center; padding: 5px; border-radius: 6px; position: absolute; z-index: 1; } .tooltip:hover .tooltiptext { visibility: visible; } #FFnS_CloseSettingsBtn { float:right; width: 24px; height: 24px; } #FFnS_ImportMenu_Submit { margin-top: 1%; }"
 };
 
 var UIManager = (function () {
