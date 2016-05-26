@@ -5,11 +5,12 @@ import {Subscription} from "./Subscription";
 import {ArticleManager} from "./ArticleManager";
 import {SubscriptionManager} from "./SubscriptionManager";
 import {$id, bindMarkup} from "./Utils";
+import {LocalPersistence} from "./LocalPersistence";
 
 export class UIManager {
     subscriptionManager = new SubscriptionManager();
     articleManager = new ArticleManager();
-    private subscription: Subscription;
+    subscription: Subscription;
 
     keywordToId = {};
     idCount = 1;
@@ -20,6 +21,10 @@ export class UIManager {
     enableRestrictingCheckId = this.getHTMLId("enableRestricting");
     sortingTypeId = this.getHTMLId("sortingType");
     sortingEnabledId = this.getHTMLId("sortingEnabled");
+
+    autoLoadAllArticlesId = "autoLoadAllArticles";
+    autoLoadAllArticlesHTMLId = this.getHTMLId(this.autoLoadAllArticlesId);
+    autoLoadAllArticles: boolean;
 
     setUpSettingsMenu() {
         var urls = this.subscriptionManager.getAllSubscriptionURLs();
@@ -116,15 +121,15 @@ export class UIManager {
 
         // Checkbox & select boxes events
         $id(this.enableFilteringCheckId).change(function () {
-            this_.subscription.setFilteringEnabled($(this).is(':checked'));
+            this_.subscription.setFilteringEnabled(this_.isChecked($(this)));
             this_.refreshFilteringAndSorting();
         });
         $id(this.enableRestrictingCheckId).change(function () {
-            this_.subscription.setRestrictingEnabled($(this).is(':checked'));
+            this_.subscription.setRestrictingEnabled(this_.isChecked($(this)));
             this_.refreshFilteringAndSorting();
         });
         $id(this.sortingEnabledId).change(function () {
-            this_.subscription.setSortingEnabled($(this).is(':checked'));
+            this_.subscription.setSortingEnabled(this_.isChecked($(this)));
             this_.refreshFilteringAndSorting();
         });
         var sortingTypeSelect = $id(this.sortingTypeId);
@@ -139,6 +144,10 @@ export class UIManager {
 
         $id("FFnS_ImportMenu_Submit").click(() => {
             this.importKeywords();
+        });
+
+        $id(this.autoLoadAllArticlesHTMLId).click(function () {
+            this_.setAutoLoadAllArticles(this_.isChecked($(this)));
         });
 
         this.setUpFilteringListEvents();
@@ -187,7 +196,7 @@ export class UIManager {
         this.updateSubscription();
         this.updateMenu();
     }
-    
+
     resetPage() {
         this.articleManager.resetArticles();
     }
@@ -205,9 +214,10 @@ export class UIManager {
     }
 
     updateSettings() {
-        $id(this.enableFilteringCheckId).prop('checked', this.subscription.isFilteringEnabled());
-        $id(this.enableRestrictingCheckId).prop('checked', this.subscription.isRestrictingEnabled());
-        $id(this.sortingEnabledId).prop('checked', this.subscription.isSortingEnabled());
+        this.autoLoadAllArticles = this.isAutoLoadAllArticles()
+        this.setChecked(this.enableFilteringCheckId, this.subscription.isFilteringEnabled());
+        this.setChecked(this.enableRestrictingCheckId, this.subscription.isRestrictingEnabled());
+        this.setChecked(this.sortingEnabledId, this.subscription.isSortingEnabled());
         $id(this.sortingTypeId).val(this.subscription.getSortingType());
     }
 
@@ -222,24 +232,27 @@ export class UIManager {
         this.refreshFilteringAndSorting();
         this.setUpFilteringListEvents();
     }
-    
+
     addArticle(articleNode: Node) {
-        this.loadMoreArticles();
+        this.loadAllArticles();
         this.articleManager.addArticle(articleNode);
     }
 
-    loadMoreArticles() {
-        if(this.subscriptionManager.getCurrentUnreadCount() == 0) {
+    loadAllArticles() {
+        if (!this.autoLoadAllArticles) {
             return;
         }
-        if(this.isVisible($(ext.fullyLoadedArticlesSelector))) {
+        if (this.subscriptionManager.getCurrentUnreadCount() == 0) {
+            return;
+        }
+        if (this.isVisible($(ext.fullyLoadedArticlesSelector))) {
             window.scrollTo(0, 0);
             return;
         }
         var currentScrollHeight = document.body.scrollHeight;
         window.scrollTo(0, currentScrollHeight);
     }
-    
+
     refreshFilteringAndSorting() {
         this.articleManager.resetArticles();
         $(ext.articleSelector).toArray().forEach(this.articleManager.addArticle, this.articleManager);
@@ -251,6 +264,26 @@ export class UIManager {
             this.subscriptionManager.importKeywords(selectedURL);
             this.updateMenu();
         }
+    }
+
+    isChecked(input: JQuery): boolean {
+        return input.is(':checked');
+    }
+
+    setChecked(htmlId: string, checked: boolean) {
+        $id(htmlId).prop('checked', checked);
+    }
+
+    isAutoLoadAllArticles(): boolean {
+        var enabled = LocalPersistence.get(this.autoLoadAllArticlesId, true);
+        this.setChecked(this.autoLoadAllArticlesHTMLId, enabled);
+        return enabled;
+    }
+
+    setAutoLoadAllArticles(enabled: boolean) {
+        LocalPersistence.put(this.autoLoadAllArticlesId, enabled);
+        this.autoLoadAllArticles = enabled;
+        this.setChecked(this.autoLoadAllArticlesHTMLId, enabled);
     }
 
     getHTMLId(id: string) {
