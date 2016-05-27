@@ -10,6 +10,7 @@
     ],
     "files": [
         "src/ArticleManager.ts",
+        "src/CheckBox.ts",
         "src/DataTypes.ts",
         "src/Externals.ts",
         "src/LocalPersistence.ts",

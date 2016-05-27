@@ -41,7 +41,7 @@ function bindMarkup(html, bindings) {
     });
     return html;
 }
-function callbackBind(thisArg) {
+function callbackBindedTo(thisArg) {
     return (function (callback) {
         return callback.bind(this);
     }).bind(thisArg);
@@ -327,7 +327,7 @@ var ArticleManager = (function () {
 }());
 
 var templates = {
-    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <div class='FFnS_settings'> <span class='FFnS_settings_header'>General settings: </span> <span class='FFnS_settings_span tooltip'> Auto load all unread articles <span class='tooltiptext'>Not applied if there are no unread articles</span> </span> <input id='FFnS_autoLoadAllArticles' type='checkbox'> <span class='FFnS_settings_span tooltip'> Use global settings <span class='tooltiptext'>Use the global settings (filtering, sorting) for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span> </span> <input id='FFnS_enableGlobalSettings' type='checkbox'> </div> <div class='FFnS_settings'> <span class='FFnS_settings_header'>Subscription settings: </span> <span> <span class='FFnS_settings_span tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_enableFiltering' type='checkbox'> </span> <span> <span class='FFnS_settings_span tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_enableRestricting' type='checkbox'> </span> <span> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_sortingEnabled' type='checkbox'> <select id='FFnS_sortingType'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li class=''> <a href='#FFnS_tab_ImportMenu'>Import subscription settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span class='FFnS_settings_span'>Import subscription settings from url: </span> <select id='FFnS_ImportMenu_SubscriptionSelect'> {{ImportMenu.SubscriptionOptions}} </select> <div><button id='FFnS_ImportMenu_Submit'>Import</button></div> </div> </div> </div> </div> </div>",
+    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <div class='FFnS_settings'> <span class='FFnS_settings_header'>General settings: </span> <span class='FFnS_settings_span tooltip'> Auto load all unread articles <span class='tooltiptext'>Not applied if there are no unread articles</span> </span> <input id='FFnS_autoLoadAllArticles' type='checkbox'> <span class='FFnS_settings_span tooltip'> Use global settings <span class='tooltiptext'>Use the global settings (filtering, sorting) for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span> </span> <input id='FFnS_globalSettingsEnabled' type='checkbox'> </div> <div class='FFnS_settings'> <span class='FFnS_settings_header'>Subscription settings: </span> <span> <span class='FFnS_settings_span tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_enableFiltering' type='checkbox'> </span> <span> <span class='FFnS_settings_span tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_enableRestricting' type='checkbox'> </span> <span> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_sortingEnabled' type='checkbox'> <select id='FFnS_sortingType'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li class=''> <a href='#FFnS_tab_ImportMenu'>Import subscription settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span class='FFnS_settings_span'>Import subscription settings from url: </span> <select id='FFnS_ImportMenu_SubscriptionSelect'> {{ImportMenu.SubscriptionOptions}} </select> <div><button id='FFnS_ImportMenu_Submit'>Import</button></div> </div> </div> </div> </div> </div>",
     "filteringListHTML": "<div id='{{FilteringTypeTabId}}' class='FFnS_Tab_Menu'> <span id='{{plusBtnId}}'> <img src='{{plusIconLink}}' class='FFnS_icon' /> </span> <span id='{{eraseBtnId}}'> <img src='{{eraseIconLink}}' class='FFnS_icon' /> </span> {{filetring.keywords}} </div> ",
     "filteringKeywordHTML": "<button id='{{keywordId}}' type='button' class='FFnS_keyword'>{{keyword}}</button>",
     "optionHTML": "<option value='{{value}}'>{{value}}</option>",
@@ -346,14 +346,40 @@ var UIManager = (function () {
         this.enableRestrictingCheckId = this.getHTMLId("enableRestricting");
         this.sortingTypeId = this.getHTMLId("sortingType");
         this.sortingEnabledId = this.getHTMLId("sortingEnabled");
-        this.autoLoadAllArticlesId = "autoLoadAllArticles";
-        this.autoLoadAllArticlesHTMLId = this.getHTMLId(this.autoLoadAllArticlesId);
     }
-    UIManager.prototype.setUpSettingsMenu = function () {
+    UIManager.prototype.initPage = function () {
+        this.autoLoadAllArticlesCB = new CheckBox("autoLoadAllArticles", this);
+        this.globalSettingsEnabledCB = new CheckBox("globalSettingsEnabled", this);
+        this.updatePage();
+        this.initUI();
+    };
+    UIManager.prototype.updatePage = function () {
+        this.resetPage();
+        this.updateSubscription();
+        this.updateMenu();
+    };
+    UIManager.prototype.initUI = function () {
         var urls = this.subscriptionManager.getAllSubscriptionURLs();
         this.initSettingsMenu();
-        this.initSettingsBtns();
-        this.setUpSettingsEvents();
+        this.initShowSettingsBtns();
+        this.initSettingsEvents();
+        this.autoLoadAllArticlesCB.initUI();
+        this.globalSettingsEnabledCB.initUI();
+    };
+    UIManager.prototype.addArticle = function (articleNode) {
+        this.loadAllArticles();
+        this.articleManager.addArticle(articleNode);
+    };
+    UIManager.prototype.updateSubscription = function () {
+        this.subscription = this.subscriptionManager.updateSubscription();
+        this.articleManager.setSubscription(this.subscription);
+    };
+    UIManager.prototype.updateMenu = function () {
+        var _this = this;
+        this.updateSubscriptionSettings();
+        getFilteringTypes().forEach(function (type) {
+            _this.updateFilteringList(type);
+        });
     };
     UIManager.prototype.initSettingsMenu = function () {
         var marginElementClass = this.getHTMLId("margin_element");
@@ -380,7 +406,7 @@ var UIManager = (function () {
             $(tab).show();
         });
         var firstDiv = $("#" + tabsContentContainerId + " > div").first().show();
-        this.updateSettings();
+        this.updateSubscriptionSettings();
     };
     UIManager.prototype.getFilteringListHTML = function (type) {
         var ids = this.getIds(type);
@@ -413,7 +439,7 @@ var UIManager = (function () {
         });
         return optionsHTML;
     };
-    UIManager.prototype.initSettingsBtns = function () {
+    UIManager.prototype.initShowSettingsBtns = function () {
         var this_ = this;
         $(ext.settingsBtnPredecessorSelector).each(function (i, element) {
             var clone = $(element).clone();
@@ -427,7 +453,7 @@ var UIManager = (function () {
             });
         });
     };
-    UIManager.prototype.setUpSettingsEvents = function () {
+    UIManager.prototype.initSettingsEvents = function () {
         var _this = this;
         var this_ = this;
         // Checkbox & select boxes events
@@ -453,9 +479,6 @@ var UIManager = (function () {
         });
         $id("FFnS_ImportMenu_Submit").click(function () {
             _this.importKeywords();
-        });
-        $id(this.autoLoadAllArticlesHTMLId).click(function () {
-            this_.setAutoLoadAllArticles(this_.isChecked($(this)));
         });
         this.setUpFilteringListEvents();
     };
@@ -493,27 +516,10 @@ var UIManager = (function () {
             });
         }
     };
-    UIManager.prototype.updatePage = function () {
-        this.resetPage();
-        this.updateSubscription();
-        this.updateMenu();
-    };
     UIManager.prototype.resetPage = function () {
         this.articleManager.resetArticles();
     };
-    UIManager.prototype.updateSubscription = function () {
-        this.subscription = this.subscriptionManager.updateSubscription();
-        this.articleManager.setSubscription(this.subscription);
-    };
-    UIManager.prototype.updateMenu = function () {
-        var _this = this;
-        this.updateSettings();
-        getFilteringTypes().forEach(function (type) {
-            _this.updateFilteringList(type);
-        });
-    };
-    UIManager.prototype.updateSettings = function () {
-        this.autoLoadAllArticles = this.isAutoLoadAllArticles();
+    UIManager.prototype.updateSubscriptionSettings = function () {
         this.setChecked(this.enableFilteringCheckId, this.subscription.isFilteringEnabled());
         this.setChecked(this.enableRestrictingCheckId, this.subscription.isRestrictingEnabled());
         this.setChecked(this.sortingEnabledId, this.subscription.isSortingEnabled());
@@ -529,12 +535,8 @@ var UIManager = (function () {
         this.refreshFilteringAndSorting();
         this.setUpFilteringListEvents();
     };
-    UIManager.prototype.addArticle = function (articleNode) {
-        this.loadAllArticles();
-        this.articleManager.addArticle(articleNode);
-    };
     UIManager.prototype.loadAllArticles = function () {
-        if (!this.autoLoadAllArticles) {
+        if (!this.autoLoadAllArticlesCB.isEnabled()) {
             return;
         }
         if (this.subscriptionManager.getCurrentUnreadCount() == 0) {
@@ -563,16 +565,6 @@ var UIManager = (function () {
     };
     UIManager.prototype.setChecked = function (htmlId, checked) {
         $id(htmlId).prop('checked', checked);
-    };
-    UIManager.prototype.isAutoLoadAllArticles = function () {
-        var enabled = LocalPersistence.get(this.autoLoadAllArticlesId, true);
-        this.setChecked(this.autoLoadAllArticlesHTMLId, enabled);
-        return enabled;
-    };
-    UIManager.prototype.setAutoLoadAllArticles = function (enabled) {
-        LocalPersistence.put(this.autoLoadAllArticlesId, enabled);
-        this.autoLoadAllArticles = enabled;
-        this.setChecked(this.autoLoadAllArticlesHTMLId, enabled);
     };
     UIManager.prototype.getHTMLId = function (id) {
         return "FFnS_" + id;
@@ -605,14 +597,42 @@ var UIManager = (function () {
     return UIManager;
 }());
 
+var CheckBox = (function () {
+    function CheckBox(id, uiManager) {
+        this.id = id;
+        this.uiManager = uiManager;
+        this.htmlId = uiManager.getHTMLId(id);
+        this.enabled = LocalPersistence.get(this.id, true);
+        this.uiManager.setChecked(this.htmlId, this.enabled);
+    }
+    CheckBox.prototype.isEnabled = function () {
+        return this.enabled;
+    };
+    CheckBox.prototype.setEnabled = function (enabled) {
+        LocalPersistence.put(this.id, enabled);
+        this.enabled = enabled;
+        this.refreshUI();
+    };
+    CheckBox.prototype.initUI = function () {
+        var this_ = this;
+        $id(this.htmlId).click(function () {
+            this_.setEnabled(this_.uiManager.isChecked($(this)));
+        });
+        this.refreshUI();
+    };
+    CheckBox.prototype.refreshUI = function () {
+        this.uiManager.setChecked(this.htmlId, this.enabled);
+    };
+    return CheckBox;
+}());
+
 $(document).ready(function () {
     var uiManager = new UIManager();
-    var uiManagerBind = callbackBind(uiManager);
+    var uiManagerBind = callbackBindedTo(uiManager);
     $("head").append("<style>" + templates.styleCSS + "</style>");
     NodeCreationObserver.onCreation(ext.pageChangeSelector, function () {
         console.log("Feedly page fully loaded");
-        uiManager.updatePage();
-        uiManager.setUpSettingsMenu();
+        uiManager.initPage();
         NodeCreationObserver.onCreation(ext.articleSelector, uiManagerBind(uiManager.addArticle));
         NodeCreationObserver.onCreation(ext.pageChangeSelector, uiManagerBind(uiManager.updatePage));
     }, true);

@@ -10,6 +10,7 @@
         "ArticleManager",
         "Templates",
         "UIManager",
+        "CheckBox",
         "Main"
     ]
 }

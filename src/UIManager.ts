@@ -4,13 +4,15 @@ import {FilteringType, SortingType, getFilteringTypes, getFilteringTypeId} from 
 import {Subscription} from "./Subscription";
 import {ArticleManager} from "./ArticleManager";
 import {SubscriptionManager} from "./SubscriptionManager";
+import {CheckBox} from "./CheckBox";
 import {$id, bindMarkup} from "./Utils";
-import {LocalPersistence} from "./LocalPersistence";
 
 export class UIManager {
     subscriptionManager = new SubscriptionManager();
     articleManager = new ArticleManager();
     subscription: Subscription;
+    autoLoadAllArticlesCB : CheckBox;
+    globalSettingsEnabledCB : CheckBox;
 
     keywordToId = {};
     idCount = 1;
@@ -22,15 +24,43 @@ export class UIManager {
     sortingTypeId = this.getHTMLId("sortingType");
     sortingEnabledId = this.getHTMLId("sortingEnabled");
 
-    autoLoadAllArticlesId = "autoLoadAllArticles";
-    autoLoadAllArticlesHTMLId = this.getHTMLId(this.autoLoadAllArticlesId);
-    autoLoadAllArticles: boolean;
+    initPage() {
+        this.autoLoadAllArticlesCB = new CheckBox("autoLoadAllArticles", this);
+        this.globalSettingsEnabledCB = new CheckBox("globalSettingsEnabled", this)
+        this.updatePage();
+        this.initUI();
+    }
+    
+    updatePage() {
+        this.resetPage();
+        this.updateSubscription();
+        this.updateMenu();
+    }
 
-    setUpSettingsMenu() {
+    initUI() {
         var urls = this.subscriptionManager.getAllSubscriptionURLs();
         this.initSettingsMenu();
-        this.initSettingsBtns();
-        this.setUpSettingsEvents();
+        this.initShowSettingsBtns();
+        this.initSettingsEvents();
+        this.autoLoadAllArticlesCB.initUI();
+        this.globalSettingsEnabledCB.initUI();
+    }
+
+    addArticle(articleNode: Node) {
+        this.loadAllArticles();
+        this.articleManager.addArticle(articleNode);
+    }
+
+    updateSubscription() {
+        this.subscription = this.subscriptionManager.updateSubscription();
+        this.articleManager.setSubscription(this.subscription);
+    }
+
+    updateMenu() {
+        this.updateSubscriptionSettings();
+        getFilteringTypes().forEach((type) => {
+            this.updateFilteringList(type);
+        });
     }
 
     initSettingsMenu() {
@@ -61,7 +91,7 @@ export class UIManager {
         });
         var firstDiv = $("#" + tabsContentContainerId + " > div").first().show();
 
-        this.updateSettings();
+        this.updateSubscriptionSettings();
     }
 
     getFilteringListHTML(type: FilteringType): string {
@@ -100,7 +130,7 @@ export class UIManager {
         return optionsHTML;
     }
 
-    initSettingsBtns() {
+    initShowSettingsBtns() {
         var this_ = this;
         $(ext.settingsBtnPredecessorSelector).each(function (i, element) {
             var clone = $(element).clone();
@@ -116,7 +146,7 @@ export class UIManager {
         });
     }
 
-    setUpSettingsEvents() {
+    initSettingsEvents() {
         var this_ = this;
 
         // Checkbox & select boxes events
@@ -144,10 +174,6 @@ export class UIManager {
 
         $id("FFnS_ImportMenu_Submit").click(() => {
             this.importKeywords();
-        });
-
-        $id(this.autoLoadAllArticlesHTMLId).click(function () {
-            this_.setAutoLoadAllArticles(this_.isChecked($(this)));
         });
 
         this.setUpFilteringListEvents();
@@ -191,30 +217,11 @@ export class UIManager {
         }
     }
 
-    updatePage() {
-        this.resetPage();
-        this.updateSubscription();
-        this.updateMenu();
-    }
-
     resetPage() {
         this.articleManager.resetArticles();
     }
 
-    updateSubscription() {
-        this.subscription = this.subscriptionManager.updateSubscription();
-        this.articleManager.setSubscription(this.subscription);
-    }
-
-    updateMenu() {
-        this.updateSettings();
-        getFilteringTypes().forEach((type) => {
-            this.updateFilteringList(type);
-        });
-    }
-
-    updateSettings() {
-        this.autoLoadAllArticles = this.isAutoLoadAllArticles()
+    updateSubscriptionSettings() {
         this.setChecked(this.enableFilteringCheckId, this.subscription.isFilteringEnabled());
         this.setChecked(this.enableRestrictingCheckId, this.subscription.isRestrictingEnabled());
         this.setChecked(this.sortingEnabledId, this.subscription.isSortingEnabled());
@@ -233,13 +240,8 @@ export class UIManager {
         this.setUpFilteringListEvents();
     }
 
-    addArticle(articleNode: Node) {
-        this.loadAllArticles();
-        this.articleManager.addArticle(articleNode);
-    }
-
     loadAllArticles() {
-        if (!this.autoLoadAllArticles) {
+        if (!this.autoLoadAllArticlesCB.isEnabled()) {
             return;
         }
         if (this.subscriptionManager.getCurrentUnreadCount() == 0) {
@@ -266,27 +268,15 @@ export class UIManager {
         }
     }
 
-    isChecked(input: JQuery): boolean {
+    public isChecked(input: JQuery): boolean {
         return input.is(':checked');
     }
 
-    setChecked(htmlId: string, checked: boolean) {
+    public setChecked(htmlId: string, checked: boolean) {
         $id(htmlId).prop('checked', checked);
     }
 
-    isAutoLoadAllArticles(): boolean {
-        var enabled = LocalPersistence.get(this.autoLoadAllArticlesId, true);
-        this.setChecked(this.autoLoadAllArticlesHTMLId, enabled);
-        return enabled;
-    }
-
-    setAutoLoadAllArticles(enabled: boolean) {
-        LocalPersistence.put(this.autoLoadAllArticlesId, enabled);
-        this.autoLoadAllArticles = enabled;
-        this.setChecked(this.autoLoadAllArticlesHTMLId, enabled);
-    }
-
-    getHTMLId(id: string) {
+    public getHTMLId(id: string) {
         return "FFnS_" + id;
     }
 

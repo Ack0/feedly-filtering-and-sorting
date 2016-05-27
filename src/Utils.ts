@@ -15,7 +15,7 @@ export function bindMarkup(html: string, bindings: MarkupBinding[]): string {
     return html;
 }
 
-export function callbackBind(thisArg: any): (callback: (...args: any[]) => any) => any {
+export function callbackBindedTo(thisArg: any): (callback: (...args: any[]) => any) => any {
     return (function(callback: () => any) {
         return callback.bind(this);
     }).bind(thisArg);
