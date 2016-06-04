@@ -9,8 +9,9 @@ export class CheckBox {
     htmlId: string;
     uiManager: UIManager;
     enabled: boolean;
+    fullRefreshOnChange = true;
     
-    constructor(id: string, uiManager: UIManager) {
+    constructor(id: string, uiManager: UIManager, fullRefreshOnChange?: boolean) {
         this.id = id;
         this.uiManager = uiManager;
         this.htmlId = uiManager.getHTMLId(id);
@@ -32,6 +33,7 @@ export class CheckBox {
         var this_ = this;
         $id(this.htmlId).click(function () {
             this_.setEnabled(this_.uiManager.isChecked($(this)));
+            this_.uiManager.refreshPage();
         });
         this.refreshUI();
     }

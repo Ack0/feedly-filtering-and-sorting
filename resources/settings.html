@@ -9,13 +9,13 @@
             </span>
             <input id="FFnS_autoLoadAllArticles" type="checkbox">
             <span class="FFnS_settings_span tooltip">
-                Use global settings
-                <span class="tooltiptext">Use the global settings (filtering, sorting) for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span>
+                Always use global settings
+                <span class="tooltiptext">Use the same filtering and sorting settings for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span>
             </span>
             <input id="FFnS_globalSettingsEnabled" type="checkbox">
         </div>
         <div class="FFnS_settings">
-            <span class="FFnS_settings_header">Subscription settings: </span>
+            <span id="FFnS_subscription_title" class="FFnS_settings_header"></span>
             <span>
                 <span class="FFnS_settings_span tooltip">
                     Filtering enabled
@@ -48,13 +48,13 @@
                     <a href="#FFnS_tab_RestrictedOn">Restricting keywords</a>
                 </li>
                 <li class="">
-                    <a href="#FFnS_tab_ImportMenu">Import subscription settings</a>
+                    <a href="#FFnS_tab_ImportMenu">Import settings</a>
                 </li>
             </ul>
             <div id="FFnS_tabs_content">
                 {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}}
                 <div id="FFnS_tab_ImportMenu" class="FFnS_Tab_Menu">
-                    <span class="FFnS_settings_span">Import subscription settings from url: </span>
+                    <span class="FFnS_settings_span">Import settings from url: </span>
                     <select id="FFnS_ImportMenu_SubscriptionSelect">
                         {{ImportMenu.SubscriptionOptions}}
                     </select>

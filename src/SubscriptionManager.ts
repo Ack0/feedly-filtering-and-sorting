@@ -5,14 +5,15 @@ import {Subscription} from "./Subscription";
 import {SubscriptionDAO} from "./SubscriptionDAO";
 
 export class SubscriptionManager {
+    private GLOBAL_SETTINGS_SUBSCRIPTION_URL = "---global settings---";
     private currentSubscription : Subscription;
     private dao = new SubscriptionDAO();
     private urlPrefixPattern = new RegExp(ext.urlPrefixPattern, "i");
     private currentUnreadCount = 0;
     
-    updateSubscription() : Subscription {
+    updateSubscription(globalSettingsEnabled: boolean) : Subscription {
         this.updateUnreadCount();
-        var url = this.getSubscriptionURL();
+        var url = this.getSubscriptionURL(globalSettingsEnabled);
         return this.currentSubscription = this.dao.load(url); 
     }
     
@@ -25,7 +26,10 @@ export class SubscriptionManager {
         return this.dao.getAllSubscriptionURLs();
     }
     
-    getSubscriptionURL(): string {
+    getSubscriptionURL(globalSettingsEnabled: boolean): string {
+        if(globalSettingsEnabled) {
+            return this.GLOBAL_SETTINGS_SUBSCRIPTION_URL;
+        }
         var url = document.URL;
         url = url.replace(this.urlPrefixPattern, "");
         return url;

@@ -12,6 +12,11 @@ export class ArticleManager {
         this.subscription = subscription;
     }
 
+    refreshArticles() {
+        this.resetArticles();
+        $(ext.articleSelector).toArray().forEach(this.addArticle, this);
+    }
+    
     resetArticles() {
         this.titles = [];
         this.popularityArray = [];

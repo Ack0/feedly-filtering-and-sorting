@@ -25,10 +25,11 @@ export class UIManager {
     sortingEnabledId = this.getHTMLId("sortingEnabled");
 
     initPage() {
-        this.autoLoadAllArticlesCB = new CheckBox("autoLoadAllArticles", this);
-        this.globalSettingsEnabledCB = new CheckBox("globalSettingsEnabled", this)
-        this.updatePage();
+        this.autoLoadAllArticlesCB = new CheckBox("autoLoadAllArticles", this, false);
+        this.globalSettingsEnabledCB = new CheckBox("globalSettingsEnabled", this);
         this.initUI();
+        this.updatePage();
+        this.initSettingsEvents();
     }
     
     updatePage() {
@@ -37,30 +38,56 @@ export class UIManager {
         this.updateMenu();
     }
 
-    initUI() {
-        var urls = this.subscriptionManager.getAllSubscriptionURLs();
-        this.initSettingsMenu();
-        this.initShowSettingsBtns();
-        this.initSettingsEvents();
-        this.autoLoadAllArticlesCB.initUI();
-        this.globalSettingsEnabledCB.initUI();
+    resetPage() {
+        this.articleManager.resetArticles();
     }
 
-    addArticle(articleNode: Node) {
-        this.loadAllArticles();
-        this.articleManager.addArticle(articleNode);
+    refreshPage() {
+        this.updatePage();
+        this.refreshFilteringAndSorting();
+    }
+    
+    refreshFilteringAndSorting() {
+        this.articleManager.refreshArticles();
     }
 
     updateSubscription() {
-        this.subscription = this.subscriptionManager.updateSubscription();
+        var globalSettingsEnabled = this.globalSettingsEnabledCB.isEnabled();
+        this.subscription = this.subscriptionManager.updateSubscription(globalSettingsEnabled);
         this.articleManager.setSubscription(this.subscription);
+        this.updateSubscriptionTitle(globalSettingsEnabled);
     }
-
+    
     updateMenu() {
         this.updateSubscriptionSettings();
         getFilteringTypes().forEach((type) => {
             this.updateFilteringList(type);
         });
+        this.updateImportOptionsHTML();
+    }
+
+    updateSubscriptionSettings() {
+        this.setChecked(this.enableFilteringCheckId, this.subscription.isFilteringEnabled());
+        this.setChecked(this.enableRestrictingCheckId, this.subscription.isRestrictingEnabled());
+        this.setChecked(this.sortingEnabledId, this.subscription.isSortingEnabled());
+        $id(this.sortingTypeId).val(this.subscription.getSortingType());
+    }
+
+    updateSubscriptionTitle(globalSettingsEnabled: boolean) {
+        var title = globalSettingsEnabled ? "Global" : "Subscription";
+        title += " settings: ";
+        $id("FFnS_subscription_title").text(title);
+    }
+
+    updateImportOptionsHTML() {
+        $id("FFnS_ImportMenu_SubscriptionSelect").html(this.getImportOptionsHTML());
+    }
+    
+    initUI() {
+        this.initSettingsMenu();
+        this.initShowSettingsBtns();
+        this.autoLoadAllArticlesCB.initUI();
+        this.globalSettingsEnabledCB.initUI();
     }
 
     initSettingsMenu() {
@@ -76,7 +103,7 @@ export class UIManager {
             { name: "SortingType.TitleDesc", value: SortingType.TitleDesc },
             { name: "FilteringList.Type.FilteredOut", value: this.getFilteringListHTML(FilteringType.FilteredOut) },
             { name: "FilteringList.Type.RestrictedOn", value: this.getFilteringListHTML(FilteringType.RestrictedOn) },
-            { name: "ImportMenu.SubscriptionOptions", value: this.getImportKeywordsSubscriptionOptions() }
+            { name: "ImportMenu.SubscriptionOptions", value: this.getImportOptionsHTML() }
         ]);
         $("body").prepend(settingsHtml);
 
@@ -90,38 +117,22 @@ export class UIManager {
             $(tab).show();
         });
         var firstDiv = $("#" + tabsContentContainerId + " > div").first().show();
-
-        this.updateSubscriptionSettings();
     }
 
     getFilteringListHTML(type: FilteringType): string {
         var ids = this.getIds(type);
-
-        var filteringList = this.subscription.getFilteringList(type);
-
-        var filteringKeywordsHTML = "";
-        for (var i = 0; i < filteringList.length; i++) {
-            var keyword = filteringList[i];
-            var keywordId = this.getKeywordId(ids.typeId, keyword);
-            var filteringKeywordHTML = bindMarkup(templates.filteringKeywordHTML, [
-                { name: "keywordId", value: keywordId },
-                { name: "keyword", value: keyword }
-            ]);
-            filteringKeywordsHTML += filteringKeywordHTML;
-        }
-
         var filteringListHTML = bindMarkup(templates.filteringListHTML, [
             { name: "FilteringTypeTabId", value: this.getFilteringTypeTabId(type) },
             { name: "plusBtnId", value: this.getHTMLId(ids.plusBtnId) },
             { name: "plusIconLink", value: ext.plusIconLink },
             { name: "eraseBtnId", value: this.getHTMLId(ids.eraseBtnId) },
             { name: "eraseIconLink", value: ext.eraseIconLink },
-            { name: "filetring.keywords", value: filteringKeywordsHTML }
+            { name: "filetringKeywordsId", value: ids.filetringKeywordsId }
         ]);
         return filteringListHTML;
     }
 
-    getImportKeywordsSubscriptionOptions(): string {
+    getImportOptionsHTML(): string {
         var optionsHTML = "";
         var urls = this.subscriptionManager.getAllSubscriptionURLs();
         urls.forEach((url) => {
@@ -217,30 +228,32 @@ export class UIManager {
         }
     }
 
-    resetPage() {
-        this.articleManager.resetArticles();
-    }
-
-    updateSubscriptionSettings() {
-        this.setChecked(this.enableFilteringCheckId, this.subscription.isFilteringEnabled());
-        this.setChecked(this.enableRestrictingCheckId, this.subscription.isRestrictingEnabled());
-        this.setChecked(this.sortingEnabledId, this.subscription.isSortingEnabled());
-        $id(this.sortingTypeId).val(this.subscription.getSortingType());
-    }
-
     updateFilteringList(type: FilteringType) {
-        var keywordListHtml = this.getFilteringListHTML(type);
-        var wasVisible = this.isVisible($id(this.getFilteringTypeTabId(type)));
-        $id(this.getFilteringTypeTabId(type)).replaceWith(keywordListHtml);
-        if (wasVisible) {
-            $id(this.getFilteringTypeTabId(type)).show();
+        var ids = this.getIds(type);
+        var filteringList = this.subscription.getFilteringList(type);
+        var filteringKeywordsHTML = "";
+        
+        for (var i = 0; i < filteringList.length; i++) {
+            var keyword = filteringList[i];
+            var keywordId = this.getKeywordId(ids.typeId, keyword);
+            var filteringKeywordHTML = bindMarkup(templates.filteringKeywordHTML, [
+                { name: "keywordId", value: keywordId },
+                { name: "keyword", value: keyword }
+            ]);
+            filteringKeywordsHTML += filteringKeywordHTML;
         }
-
+        
+        $id(ids.filetringKeywordsId).html(filteringKeywordsHTML);
         this.refreshFilteringAndSorting();
         this.setUpFilteringListEvents();
     }
 
-    loadAllArticles() {
+    addArticle(articleNode: Node) {
+        this.tryAutoLoadAllArticles();
+        this.articleManager.addArticle(articleNode);
+    }
+
+    tryAutoLoadAllArticles() {
         if (!this.autoLoadAllArticlesCB.isEnabled()) {
             return;
         }
@@ -253,11 +266,6 @@ export class UIManager {
         }
         var currentScrollHeight = document.body.scrollHeight;
         window.scrollTo(0, currentScrollHeight);
-    }
-
-    refreshFilteringAndSorting() {
-        this.articleManager.resetArticles();
-        $(ext.articleSelector).toArray().forEach(this.articleManager.addArticle, this.articleManager);
     }
 
     importKeywords() {
@@ -301,7 +309,8 @@ export class UIManager {
         return {
             typeId: "Keywords_" + id,
             plusBtnId: "Add_" + id,
-            eraseBtnId: "DeleteAll_" + id
+            eraseBtnId: "DeleteAll_" + id,
+            filetringKeywordsId: "FiletringKeywords_" + id
         };
     }
 
