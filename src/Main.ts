@@ -10,7 +10,7 @@ $(document).ready(function () {
 
     NodeCreationObserver.onCreation(ext.pageChangeSelector, function() {
         console.log("Feedly page fully loaded");
-        uiManager.initPage();
+        uiManager.init();
         NodeCreationObserver.onCreation(ext.articleSelector, uiManagerBind(uiManager.addArticle));
         NodeCreationObserver.onCreation(ext.pageChangeSelector, uiManagerBind(uiManager.updatePage));
     }, true);

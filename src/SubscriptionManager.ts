@@ -7,14 +7,32 @@ import {SubscriptionDAO} from "./SubscriptionDAO";
 export class SubscriptionManager {
     private GLOBAL_SETTINGS_SUBSCRIPTION_URL = "---global settings---";
     private currentSubscription : Subscription;
-    private dao = new SubscriptionDAO();
+    private globalSettings : Subscription;
+    private dao : SubscriptionDAO;
     private urlPrefixPattern = new RegExp(ext.urlPrefixPattern, "i");
     private currentUnreadCount = 0;
     
-    updateSubscription(globalSettingsEnabled: boolean) : Subscription {
+    constructor() {
+        this.dao = new SubscriptionDAO();
+        this.loadGlobalSettings();
+        this.dao.setDefaultSubscription(this.globalSettings);
+    }
+    
+    loadSubscription(globalSettingsEnabled: boolean) : Subscription {
         this.updateUnreadCount();
-        var url = this.getSubscriptionURL(globalSettingsEnabled);
-        return this.currentSubscription = this.dao.load(url); 
+        var subscription: Subscription;
+        if(globalSettingsEnabled) {
+            subscription = this.globalSettings;
+        } else {
+            var url = this.getSubscriptionURL();
+            subscription = this.dao.load(url);
+        }
+        return this.currentSubscription = subscription; 
+    }
+    
+    loadGlobalSettings() : Subscription {
+        this.globalSettings = this.dao.load(this.GLOBAL_SETTINGS_SUBSCRIPTION_URL);
+        return this.globalSettings;
     }
     
     importKeywords(url: string) {
@@ -26,10 +44,7 @@ export class SubscriptionManager {
         return this.dao.getAllSubscriptionURLs();
     }
     
-    getSubscriptionURL(globalSettingsEnabled: boolean): string {
-        if(globalSettingsEnabled) {
-            return this.GLOBAL_SETTINGS_SUBSCRIPTION_URL;
-        }
+    getSubscriptionURL(): string {
         var url = document.URL;
         url = url.replace(this.urlPrefixPattern, "");
         return url;

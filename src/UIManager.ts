@@ -8,8 +8,8 @@ import {CheckBox} from "./CheckBox";
 import {$id, bindMarkup} from "./Utils";
 
 export class UIManager {
-    subscriptionManager = new SubscriptionManager();
-    articleManager = new ArticleManager();
+    subscriptionManager : SubscriptionManager;
+    articleManager : ArticleManager;
     subscription: Subscription;
     autoLoadAllArticlesCB : CheckBox;
     globalSettingsEnabledCB : CheckBox;
@@ -24,7 +24,9 @@ export class UIManager {
     sortingTypeId = this.getHTMLId("sortingType");
     sortingEnabledId = this.getHTMLId("sortingEnabled");
 
-    initPage() {
+    init() {
+        this.subscriptionManager = new SubscriptionManager();
+        this.articleManager = new ArticleManager();
         this.autoLoadAllArticlesCB = new CheckBox("autoLoadAllArticles", this, false);
         this.globalSettingsEnabledCB = new CheckBox("globalSettingsEnabled", this);
         this.initUI();
@@ -53,7 +55,7 @@ export class UIManager {
 
     updateSubscription() {
         var globalSettingsEnabled = this.globalSettingsEnabledCB.isEnabled();
-        this.subscription = this.subscriptionManager.updateSubscription(globalSettingsEnabled);
+        this.subscription = this.subscriptionManager.loadSubscription(globalSettingsEnabled);
         this.articleManager.setSubscription(this.subscription);
         this.updateSubscriptionTitle(globalSettingsEnabled);
     }
@@ -191,13 +193,14 @@ export class UIManager {
     }
 
     private setUpFilteringListEvents() {
-        getFilteringTypes().forEach(this.setUpFilteringListTypeEvents, this);
+        getFilteringTypes().forEach(this.setUpFilteringListManagementEvents, this);
     }
 
-    private setUpFilteringListTypeEvents(type: FilteringType) {
+    private setUpFilteringListManagementEvents(type: FilteringType) {
         var ids = this.getIds(type);
         var keywordList = this.subscription.getFilteringList(type);
-
+        
+        // Add button
         $id(this.getHTMLId(ids.plusBtnId)).click(() => {
             var keyword = prompt("Add keyword", "");
             if (keyword !== null) {
@@ -206,7 +209,7 @@ export class UIManager {
             }
         });
 
-        // Erase button event
+        // Erase all button
         $id(this.getHTMLId(ids.eraseBtnId)).click(() => {
             if (confirm("Erase all the keyword of this list ?")) {
                 this.subscription.reset(type);
@@ -214,6 +217,13 @@ export class UIManager {
             }
         });
 
+        this.setUpKeywordButtonsEvents(type);
+    }
+
+    private setUpKeywordButtonsEvents(type: FilteringType) {
+        var ids = this.getIds(type);
+        var keywordList = this.subscription.getFilteringList(type);
+        
         // Keyword buttons events
         var t = this;
         for (var i = 0; i < keywordList.length; i++) {
@@ -227,7 +237,7 @@ export class UIManager {
             });
         }
     }
-
+    
     updateFilteringList(type: FilteringType) {
         var ids = this.getIds(type);
         var filteringList = this.subscription.getFilteringList(type);
@@ -245,7 +255,7 @@ export class UIManager {
         
         $id(ids.filetringKeywordsId).html(filteringKeywordsHTML);
         this.refreshFilteringAndSorting();
-        this.setUpFilteringListEvents();
+        this.setUpKeywordButtonsEvents(type);
     }
 
     addArticle(articleNode: Node) {

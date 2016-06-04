@@ -78,67 +78,77 @@ var LocalPersistence = (function () {
     return LocalPersistence;
 }());
 
-var Subscription = (function () {
-    function Subscription(subscriptionDAO, url) {
+var SubscriptionDTO = (function () {
+    function SubscriptionDTO(url) {
         var _this = this;
         this.filteringEnabled = false;
         this.restrictingEnabled = false;
         this.sortingEnabled = true;
         this.sortingType = SortingType.PopularityDesc;
         this.filteringListsByType = {};
-        this.dao = subscriptionDAO;
         this.url = url;
         getFilteringTypes().forEach(function (type) {
             _this.filteringListsByType[type] = [];
         });
     }
+    return SubscriptionDTO;
+}());
+
+var Subscription = (function () {
+    function Subscription(dto, dao) {
+        this.dto = dto;
+        this.dao = dao;
+    }
     Subscription.prototype.update = function (subscription, skipSave) {
-        this.filteringEnabled = subscription.filteringEnabled;
-        this.restrictingEnabled = subscription.restrictingEnabled;
-        this.sortingEnabled = subscription.sortingEnabled;
-        this.sortingType = subscription.sortingType;
-        this.filteringListsByType = subscription.filteringListsByType;
+        var newDTO = subscription.clone(this.getURL());
+        this.setDTO(newDTO);
         if (!skipSave) {
-            this.dao.save(this);
+            this.dao.save(this.dto);
         }
     };
+    Subscription.prototype.clone = function (cloneUrl) {
+        return this.dao.clone(this.dto, cloneUrl);
+    };
+    Subscription.prototype.setDTO = function (dto) {
+        this.dto = dto;
+    };
     Subscription.prototype.getURL = function () {
-        return this.url;
+        return this.dto.url;
     };
     Subscription.prototype.isFilteringEnabled = function () {
-        return this.filteringEnabled;
+        return this.dto.filteringEnabled;
     };
     Subscription.prototype.setFilteringEnabled = function (filteringEnabled) {
-        this.filteringEnabled = filteringEnabled;
-        this.dao.save(this);
+        this.dto.filteringEnabled = filteringEnabled;
+        this.dao.save(this.dto);
     };
     Subscription.prototype.isRestrictingEnabled = function () {
-        return this.restrictingEnabled;
+        return this.dto.restrictingEnabled;
     };
     Subscription.prototype.setRestrictingEnabled = function (restrictingEnabled) {
-        this.restrictingEnabled = restrictingEnabled;
-        this.dao.save(this);
+        this.dto.restrictingEnabled = restrictingEnabled;
+        this.dao.save(this.dto);
     };
     Subscription.prototype.isSortingEnabled = function () {
-        return this.sortingEnabled;
+        return this.dto.sortingEnabled;
     };
     Subscription.prototype.setSortingEnabled = function (sortingEnabled) {
-        this.sortingEnabled = sortingEnabled;
-        this.dao.save(this);
+        this.dto.sortingEnabled = sortingEnabled;
+        this.dao.save(this.dto);
     };
     Subscription.prototype.getSortingType = function () {
-        return this.sortingType;
+        return this.dto.sortingType;
     };
     Subscription.prototype.setSortingType = function (sortingType) {
-        this.sortingType = sortingType;
-        this.dao.save(this);
+        this.dto.sortingType = sortingType;
+        this.dao.save(this.dto);
     };
     Subscription.prototype.getFilteringList = function (type) {
-        return this.filteringListsByType[type];
+        return this.dto.filteringListsByType[type];
     };
     Subscription.prototype.addKeyword = function (keyword, type) {
         this.getFilteringList(type).push(keyword);
-        this.dao.save(this);
+        this.dao.save(this.dto);
     };
     Subscription.prototype.removeKeyword = function (keyword, type) {
         var keywordList = this.getFilteringList(type);
@@ -146,11 +156,11 @@ var Subscription = (function () {
         if (index > -1) {
             keywordList.splice(index, 1);
         }
-        this.dao.save(this);
+        this.dao.save(this.dto);
     };
     Subscription.prototype.reset = function (type) {
         this.getFilteringList(type).length = 0;
-        this.dao.save(this);
+        this.dao.save(this.dto);
     };
     return Subscription;
 }());
@@ -159,20 +169,42 @@ var SubscriptionDAO = (function () {
     function SubscriptionDAO() {
         this.SUBSCRIPTION_ID_PREFIX = "subscription_";
     }
-    SubscriptionDAO.prototype.save = function (subscription) {
-        var url = subscription.getURL();
+    SubscriptionDAO.prototype.save = function (dto) {
+        var url = dto.url;
         var id = this.getSubscriptionId(url);
-        this.put(id, subscription);
-        console.log("Subscription saved: " + JSON.stringify(subscription));
+        LocalPersistence.put(id, dto);
+        console.log("Subscription saved: " + JSON.stringify(dto));
     };
     SubscriptionDAO.prototype.load = function (url) {
-        var subscription = new Subscription(this, url);
         var subscriptionDTO = LocalPersistence.get(this.getSubscriptionId(url), null);
         if (subscriptionDTO != null) {
             console.log("Loaded saved subscription: " + JSON.stringify(subscriptionDTO));
-            subscription.update(subscriptionDTO, true);
         }
+        else {
+            if (this.defaultSubscription == null) {
+                subscriptionDTO = new SubscriptionDTO(url);
+                this.save(subscriptionDTO);
+            }
+            else {
+                subscriptionDTO = this.clone(this.defaultSubscription, url);
+            }
+        }
+        var subscription = new Subscription(subscriptionDTO, this);
         return subscription;
+    };
+    SubscriptionDAO.prototype.clone = function (dtoToClone, cloneUrl) {
+        var clone = new SubscriptionDTO(cloneUrl);
+        clone.filteringEnabled = dtoToClone.filteringEnabled;
+        clone.restrictingEnabled = dtoToClone.restrictingEnabled;
+        clone.sortingEnabled = dtoToClone.sortingEnabled;
+        clone.sortingType = dtoToClone.sortingType;
+        getFilteringTypes().forEach(function (type) {
+            clone.filteringListsByType[type] = dtoToClone.filteringListsByType[type].slice(0);
+        });
+        return clone;
+    };
+    SubscriptionDAO.prototype.setDefaultSubscription = function (defaultSubscription) {
+        this.defaultSubscription = defaultSubscription.dto;
     };
     SubscriptionDAO.prototype.getAllSubscriptionURLs = function () {
         var _this = this;
@@ -187,26 +219,33 @@ var SubscriptionDAO = (function () {
     SubscriptionDAO.prototype.getSubscriptionId = function (url) {
         return this.SUBSCRIPTION_ID_PREFIX + url;
     };
-    SubscriptionDAO.prototype.put = function (id, value) {
-        LocalPersistence.put(id, value, function (key, val) {
-            if (!(val instanceof SubscriptionDAO))
-                return val;
-        });
-    };
     return SubscriptionDAO;
 }());
 
 var SubscriptionManager = (function () {
     function SubscriptionManager() {
         this.GLOBAL_SETTINGS_SUBSCRIPTION_URL = "---global settings---";
-        this.dao = new SubscriptionDAO();
         this.urlPrefixPattern = new RegExp(ext.urlPrefixPattern, "i");
         this.currentUnreadCount = 0;
+        this.dao = new SubscriptionDAO();
+        this.loadGlobalSettings();
+        this.dao.setDefaultSubscription(this.globalSettings);
     }
-    SubscriptionManager.prototype.updateSubscription = function (globalSettingsEnabled) {
+    SubscriptionManager.prototype.loadSubscription = function (globalSettingsEnabled) {
         this.updateUnreadCount();
-        var url = this.getSubscriptionURL(globalSettingsEnabled);
-        return this.currentSubscription = this.dao.load(url);
+        var subscription;
+        if (globalSettingsEnabled) {
+            subscription = this.globalSettings;
+        }
+        else {
+            var url = this.getSubscriptionURL();
+            subscription = this.dao.load(url);
+        }
+        return this.currentSubscription = subscription;
+    };
+    SubscriptionManager.prototype.loadGlobalSettings = function () {
+        this.globalSettings = this.dao.load(this.GLOBAL_SETTINGS_SUBSCRIPTION_URL);
+        return this.globalSettings;
     };
     SubscriptionManager.prototype.importKeywords = function (url) {
         var importedSubscription = this.dao.load(url);
@@ -215,10 +254,7 @@ var SubscriptionManager = (function () {
     SubscriptionManager.prototype.getAllSubscriptionURLs = function () {
         return this.dao.getAllSubscriptionURLs();
     };
-    SubscriptionManager.prototype.getSubscriptionURL = function (globalSettingsEnabled) {
-        if (globalSettingsEnabled) {
-            return this.GLOBAL_SETTINGS_SUBSCRIPTION_URL;
-        }
+    SubscriptionManager.prototype.getSubscriptionURL = function () {
         var url = document.URL;
         url = url.replace(this.urlPrefixPattern, "");
         return url;
@@ -344,8 +380,6 @@ var templates = {
 
 var UIManager = (function () {
     function UIManager() {
-        this.subscriptionManager = new SubscriptionManager();
-        this.articleManager = new ArticleManager();
         this.keywordToId = {};
         this.idCount = 1;
         this.settingsDivContainerId = this.getHTMLId("settingsDivContainer");
@@ -355,7 +389,9 @@ var UIManager = (function () {
         this.sortingTypeId = this.getHTMLId("sortingType");
         this.sortingEnabledId = this.getHTMLId("sortingEnabled");
     }
-    UIManager.prototype.initPage = function () {
+    UIManager.prototype.init = function () {
+        this.subscriptionManager = new SubscriptionManager();
+        this.articleManager = new ArticleManager();
         this.autoLoadAllArticlesCB = new CheckBox("autoLoadAllArticles", this, false);
         this.globalSettingsEnabledCB = new CheckBox("globalSettingsEnabled", this);
         this.initUI();
@@ -379,7 +415,7 @@ var UIManager = (function () {
     };
     UIManager.prototype.updateSubscription = function () {
         var globalSettingsEnabled = this.globalSettingsEnabledCB.isEnabled();
-        this.subscription = this.subscriptionManager.updateSubscription(globalSettingsEnabled);
+        this.subscription = this.subscriptionManager.loadSubscription(globalSettingsEnabled);
         this.articleManager.setSubscription(this.subscription);
         this.updateSubscriptionTitle(globalSettingsEnabled);
     };
@@ -501,12 +537,13 @@ var UIManager = (function () {
         this.setUpFilteringListEvents();
     };
     UIManager.prototype.setUpFilteringListEvents = function () {
-        getFilteringTypes().forEach(this.setUpFilteringListTypeEvents, this);
+        getFilteringTypes().forEach(this.setUpFilteringListManagementEvents, this);
     };
-    UIManager.prototype.setUpFilteringListTypeEvents = function (type) {
+    UIManager.prototype.setUpFilteringListManagementEvents = function (type) {
         var _this = this;
         var ids = this.getIds(type);
         var keywordList = this.subscription.getFilteringList(type);
+        // Add button
         $id(this.getHTMLId(ids.plusBtnId)).click(function () {
             var keyword = prompt("Add keyword", "");
             if (keyword !== null) {
@@ -514,13 +551,18 @@ var UIManager = (function () {
                 _this.updateFilteringList(type);
             }
         });
-        // Erase button event
+        // Erase all button
         $id(this.getHTMLId(ids.eraseBtnId)).click(function () {
             if (confirm("Erase all the keyword of this list ?")) {
                 _this.subscription.reset(type);
                 _this.updateFilteringList(type);
             }
         });
+        this.setUpKeywordButtonsEvents(type);
+    };
+    UIManager.prototype.setUpKeywordButtonsEvents = function (type) {
+        var ids = this.getIds(type);
+        var keywordList = this.subscription.getFilteringList(type);
         // Keyword buttons events
         var t = this;
         for (var i = 0; i < keywordList.length; i++) {
@@ -549,7 +591,7 @@ var UIManager = (function () {
         }
         $id(ids.filetringKeywordsId).html(filteringKeywordsHTML);
         this.refreshFilteringAndSorting();
-        this.setUpFilteringListEvents();
+        this.setUpKeywordButtonsEvents(type);
     };
     UIManager.prototype.addArticle = function (articleNode) {
         this.tryAutoLoadAllArticles();
@@ -651,7 +693,7 @@ $(document).ready(function () {
     $("head").append("<style>" + templates.styleCSS + "</style>");
     NodeCreationObserver.onCreation(ext.pageChangeSelector, function () {
         console.log("Feedly page fully loaded");
-        uiManager.initPage();
+        uiManager.init();
         NodeCreationObserver.onCreation(ext.articleSelector, uiManagerBind(uiManager.addArticle));
         NodeCreationObserver.onCreation(ext.pageChangeSelector, uiManagerBind(uiManager.updatePage));
     }, true);

@@ -4,6 +4,7 @@
         "Utils",
         "DataTypes",
         "LocalPersistence",
+        "SubscriptionDTO",
         "Subscription",
         "SubscriptionDAO",
         "SubscriptionManager",

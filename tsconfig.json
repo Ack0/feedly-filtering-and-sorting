@@ -17,6 +17,7 @@
         "src/Main.ts",
         "src/Subscription.ts",
         "src/SubscriptionDAO.ts",
+        "src/SubscriptionDTO.ts",
         "src/SubscriptionManager.ts",
         "src/Templates.ts",
         "src/UIManager.ts",

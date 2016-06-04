@@ -1,84 +1,81 @@
 /// <reference path="./_references.d.ts" />
 
+import {SubscriptionDTO} from "./SubscriptionDTO";
 import {SubscriptionDAO} from "./SubscriptionDAO";
 import {FilteringType, SortingType, getFilteringTypes} from "./DataTypes";
 
 export class Subscription {
-    private url: string;
-    private filteringEnabled: boolean = false;
-    private restrictingEnabled: boolean = false;
-    private sortingEnabled: boolean = true;
-    private sortingType: SortingType = SortingType.PopularityDesc;
-    private filteringListsByType: { [key: number]: string[]; } = {};
-    
+    dto: SubscriptionDTO;
     dao: SubscriptionDAO;
 
-    constructor(subscriptionDAO: SubscriptionDAO, url: string) {
-        this.dao = subscriptionDAO;
-        this.url = url;
-        getFilteringTypes().forEach((type) => {
-            this.filteringListsByType[type] = [];
-        });
+    constructor(dto: SubscriptionDTO, dao: SubscriptionDAO) {
+        this.dto = dto;
+        this.dao = dao;
     }
 
     update(subscription: Subscription, skipSave?: boolean) {
-        this.filteringEnabled = subscription.filteringEnabled;
-        this.restrictingEnabled = subscription.restrictingEnabled;
-        this.sortingEnabled = subscription.sortingEnabled;
-        this.sortingType = subscription.sortingType;
-        this.filteringListsByType = subscription.filteringListsByType;
+        var newDTO = subscription.clone(this.getURL());
+        this.setDTO(newDTO);
         if(! skipSave) {
-            this.dao.save(this);
+            this.dao.save(this.dto);
         }
+    }
+    
+    clone(cloneUrl: string): SubscriptionDTO {
+        return this.dao.clone(this.dto, cloneUrl);
+    }
+
+    private setDTO(dto : SubscriptionDTO) {
+        this.dto = dto;
     }
 
     getURL(): string {
-        return this.url;
+        return this.dto.url;
     }
     
     isFilteringEnabled(): boolean {
-        return this.filteringEnabled;
+        return this.dto.filteringEnabled;
     }
     
     setFilteringEnabled(filteringEnabled: boolean) {
-        this.filteringEnabled = filteringEnabled;
-        this.dao.save(this);
+        this.dto.filteringEnabled = filteringEnabled;
+        this.dao.save(this.dto);
     }
     
     isRestrictingEnabled(): boolean {
-        return this.restrictingEnabled;
+        return this.dto.restrictingEnabled;
     }
     
     setRestrictingEnabled(restrictingEnabled: boolean) {
-        this.restrictingEnabled = restrictingEnabled;
-        this.dao.save(this);
+        this.dto.restrictingEnabled = restrictingEnabled;
+        this.dao.save(this.dto);
     }
     
     isSortingEnabled(): boolean {
-        return this.sortingEnabled;
+        return this.dto.sortingEnabled;
     }
     
     setSortingEnabled(sortingEnabled: boolean) {
-        this.sortingEnabled = sortingEnabled;
-        this.dao.save(this);
+        this.dto.sortingEnabled = sortingEnabled;
+        this.dao.save(this.dto);
     }
     
     getSortingType(): SortingType {
-        return this.sortingType;
+        return this.dto.sortingType;
     }
     
     setSortingType(sortingType: SortingType) {
-        this.sortingType = sortingType;
-        this.dao.save(this);
+        this.dto.sortingType = sortingType;
+        this.dao.save(this.dto);
     }
 
     getFilteringList(type: FilteringType): string[] {
-        return this.filteringListsByType[type];
+        return this.dto.filteringListsByType[type];
     }
     
     addKeyword(keyword: string, type: FilteringType) {        
         this.getFilteringList(type).push(keyword);
-        this.dao.save(this);
+        this.dao.save(this.dto);
     }
     
     removeKeyword(keyword: string, type: FilteringType) {        
@@ -87,11 +84,11 @@ export class Subscription {
         if (index > -1) {
             keywordList.splice(index, 1);
         }
-        this.dao.save(this);
+        this.dao.save(this.dto);
     }
     
     reset(type: FilteringType) {
         this.getFilteringList(type).length = 0;
-        this.dao.save(this);
+        this.dao.save(this.dto);
     }
 }
