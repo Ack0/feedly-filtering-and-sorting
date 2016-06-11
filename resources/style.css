@@ -95,6 +95,9 @@ FFnS_sortingType {
     color: #FFF;
     cursor: pointer;
 }
+.FFnS_input {
+    vertical-align: middle;
+}
 
 .tooltip {
     position: relative;

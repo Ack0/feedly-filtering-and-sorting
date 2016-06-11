@@ -372,10 +372,10 @@ var ArticleManager = (function () {
 
 var templates = {
     "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <div class='FFnS_settings'> <span class='FFnS_settings_header'>General settings: </span> <span class='FFnS_settings_span tooltip'> Auto load all unread articles <span class='tooltiptext'>Not applied if there are no unread articles</span> </span> <input id='FFnS_autoLoadAllArticles' type='checkbox'> <span class='FFnS_settings_span tooltip'> Always use global settings <span class='tooltiptext'>Use the same filtering and sorting settings for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span> </span> <input id='FFnS_globalSettingsEnabled' type='checkbox'> </div> <div class='FFnS_settings'> <span id='FFnS_subscription_title' class='FFnS_settings_header'></span> <span> <span class='FFnS_settings_span tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_enableFiltering' type='checkbox'> </span> <span> <span class='FFnS_settings_span tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_enableRestricting' type='checkbox'> </span> <span> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_sortingEnabled' type='checkbox'> <select id='FFnS_sortingType'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li class=''> <a href='#FFnS_tab_ImportMenu'>Import settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span class='FFnS_settings_span'>Import settings from url: </span> <select id='FFnS_ImportMenu_SubscriptionSelect'> {{ImportMenu.SubscriptionOptions}} </select> <div><button id='FFnS_ImportMenu_Submit'>Import</button></div> </div> </div> </div> </div> </div>",
-    "filteringListHTML": "<div id='{{FilteringTypeTabId}}' class='FFnS_Tab_Menu'> <span id='{{plusBtnId}}'> <img src='{{plusIconLink}}' class='FFnS_icon' /> </span> <span id='{{eraseBtnId}}'> <img src='{{eraseIconLink}}' class='FFnS_icon' /> </span> <span id='{{filetringKeywordsId}}'><spans> </div> ",
+    "filteringListHTML": "<div id='{{FilteringTypeTabId}}' class='FFnS_Tab_Menu'> <input id='{{inputId}}' class='FFnS_input' size='10' type='text'> <span id='{{plusBtnId}}'> <img src='{{plusIconLink}}' class='FFnS_icon' /> </span> <span id='{{filetringKeywordsId}}'></span> <span id='{{eraseBtnId}}'> <img src='{{eraseIconLink}}' class='FFnS_icon' /> </span> </div>",
     "filteringKeywordHTML": "<button id='{{keywordId}}' type='button' class='FFnS_keyword'>{{keyword}}</button>",
     "optionHTML": "<option value='{{value}}'>{{value}}</option>",
-    "styleCSS": "#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 400px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } .FFnS_settings + .FFnS_settings { margin-top: 1%; } .FFnS_settings > :not(input):not(:first-child) { margin-left: 2%; } .FFnS_settings_header { color: #333690; } .FFnS_settings span + input { vertical-align: middle; } .FFnS_settings select { margin-left: 2% } FFnS_sortingType { font-size:12px; vertical-align: middle; } #FFnS_tabs_menu { height: 30px; clear: both; margin-top: 1%; margin-bottom: 0%; padding: 0px; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_Tab_Menu { display: none; width: 100%; max-height: 340px; overflow-y: auto; overflow-x: hidden; } .FFnS_settings_span { display: inline; vertical-align: middle; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; } .tooltip .tooltiptext { visibility: hidden; width: 120px; background-color: black; color: #fff; text-align: center; padding: 5px; border-radius: 6px; position: absolute; z-index: 1; } .tooltip:hover .tooltiptext { visibility: visible; } #FFnS_CloseSettingsBtn { float:right; width: 24px; height: 24px; } #FFnS_ImportMenu_Submit { margin-top: 1%; }"
+    "styleCSS": "#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 400px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } .FFnS_settings + .FFnS_settings { margin-top: 1%; } .FFnS_settings > :not(input):not(:first-child) { margin-left: 2%; } .FFnS_settings_header { color: #333690; } .FFnS_settings span + input { vertical-align: middle; } .FFnS_settings select { margin-left: 2% } FFnS_sortingType { font-size:12px; vertical-align: middle; } #FFnS_tabs_menu { height: 30px; clear: both; margin-top: 1%; margin-bottom: 0%; padding: 0px; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_Tab_Menu { display: none; width: 100%; max-height: 340px; overflow-y: auto; overflow-x: hidden; } .FFnS_settings_span { display: inline; vertical-align: middle; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } .FFnS_input { vertical-align: middle; } .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; } .tooltip .tooltiptext { visibility: hidden; width: 120px; background-color: black; color: #fff; text-align: center; padding: 5px; border-radius: 6px; position: absolute; z-index: 1; } .tooltip:hover .tooltiptext { visibility: visible; } #FFnS_CloseSettingsBtn { float:right; width: 24px; height: 24px; } #FFnS_ImportMenu_Submit { margin-top: 1%; }"
 };
 
 var UIManager = (function () {
@@ -477,6 +477,7 @@ var UIManager = (function () {
         var ids = this.getIds(type);
         var filteringListHTML = bindMarkup(templates.filteringListHTML, [
             { name: "FilteringTypeTabId", value: this.getFilteringTypeTabId(type) },
+            { name: "inputId", value: this.getHTMLId(ids.inputId) },
             { name: "plusBtnId", value: this.getHTMLId(ids.plusBtnId) },
             { name: "plusIconLink", value: ext.plusIconLink },
             { name: "eraseBtnId", value: this.getHTMLId(ids.eraseBtnId) },
@@ -545,15 +546,17 @@ var UIManager = (function () {
         var keywordList = this.subscription.getFilteringList(type);
         // Add button
         $id(this.getHTMLId(ids.plusBtnId)).click(function () {
-            var keyword = prompt("Add keyword", "");
-            if (keyword !== null) {
+            var input = $id(_this.getHTMLId(ids.inputId));
+            var keyword = input.val();
+            if (keyword != null && keyword !== "") {
                 _this.subscription.addKeyword(keyword, type);
                 _this.updateFilteringList(type);
+                input.val("");
             }
         });
         // Erase all button
         $id(this.getHTMLId(ids.eraseBtnId)).click(function () {
-            if (confirm("Erase all the keyword of this list ?")) {
+            if (confirm("Erase all the keywords of this list ?")) {
                 _this.subscription.reset(type);
                 _this.updateFilteringList(type);
             }
@@ -644,6 +647,7 @@ var UIManager = (function () {
         var id = getFilteringTypeId(type);
         return {
             typeId: "Keywords_" + id,
+            inputId: "Input_" + id,
             plusBtnId: "Add_" + id,
             eraseBtnId: "DeleteAll_" + id,
             filetringKeywordsId: "FiletringKeywords_" + id

@@ -125,6 +125,7 @@ export class UIManager {
         var ids = this.getIds(type);
         var filteringListHTML = bindMarkup(templates.filteringListHTML, [
             { name: "FilteringTypeTabId", value: this.getFilteringTypeTabId(type) },
+            { name: "inputId", value: this.getHTMLId(ids.inputId) },
             { name: "plusBtnId", value: this.getHTMLId(ids.plusBtnId) },
             { name: "plusIconLink", value: ext.plusIconLink },
             { name: "eraseBtnId", value: this.getHTMLId(ids.eraseBtnId) },
@@ -202,16 +203,18 @@ export class UIManager {
         
         // Add button
         $id(this.getHTMLId(ids.plusBtnId)).click(() => {
-            var keyword = prompt("Add keyword", "");
-            if (keyword !== null) {
+            var input = $id(this.getHTMLId(ids.inputId));
+            var keyword = input.val();
+            if (keyword != null && keyword !== "") {
                 this.subscription.addKeyword(keyword, type);
                 this.updateFilteringList(type);
+                input.val("");
             }
         });
 
         // Erase all button
         $id(this.getHTMLId(ids.eraseBtnId)).click(() => {
-            if (confirm("Erase all the keyword of this list ?")) {
+            if (confirm("Erase all the keywords of this list ?")) {
                 this.subscription.reset(type);
                 this.updateFilteringList(type);
             }
@@ -318,6 +321,7 @@ export class UIManager {
         var id = getFilteringTypeId(type);
         return {
             typeId: "Keywords_" + id,
+            inputId: "Input_" + id,
             plusBtnId: "Add_" + id,
             eraseBtnId: "DeleteAll_" + id,
             filetringKeywordsId: "FiletringKeywords_" + id
