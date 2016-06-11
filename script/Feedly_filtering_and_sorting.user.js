@@ -24,7 +24,7 @@ var ext = {
     "urlPrefixPattern": "https?:\/\/[^\/]+\/i\/",
     "settingsBtnPredecessorSelector": "#pageActionCustomize, #floatingPageActionCustomize",
     "articleSelector": "#section0_column0 > div",
-    "pageChangeSelector": "h1#feedlyTitleBar > .hhint",
+    "subscriptionChangeSelector": "h1#feedlyTitleBar > .hhint",
     "articleTitleAttribute": "data-title",
     "popularitySelector": ".nbrRecommendations",
     "unreadCountSelector": "#feedlyTitleBar [class*='UnreadCount']",
@@ -265,6 +265,9 @@ var SubscriptionManager = (function () {
         var unreadCount = Number(unreadCountStr);
         this.currentUnreadCount = isNaN(unreadCount) ? 0 : unreadCount;
     };
+    SubscriptionManager.prototype.getCurrentSubscription = function () {
+        return this.currentSubscription;
+    };
     SubscriptionManager.prototype.getCurrentUnreadCount = function () {
         return this.currentUnreadCount;
     };
@@ -273,19 +276,19 @@ var SubscriptionManager = (function () {
 
 var ArticleManager = (function () {
     function ArticleManager() {
-        this.titles = [];
-        this.popularityArray = [];
+        this.articlesCount = 0;
+        this.currentUnreadCount = 0;
     }
-    ArticleManager.prototype.setSubscription = function (subscription) {
-        this.subscription = subscription;
+    ArticleManager.prototype.update = function (subscriptionManager) {
+        this.subscription = subscriptionManager.getCurrentSubscription();
+        this.currentUnreadCount = subscriptionManager.getCurrentUnreadCount();
     };
     ArticleManager.prototype.refreshArticles = function () {
         this.resetArticles();
         $(ext.articleSelector).toArray().forEach(this.addArticle, this);
     };
     ArticleManager.prototype.resetArticles = function () {
-        this.titles = [];
-        this.popularityArray = [];
+        this.articlesCount = 0;
     };
     ArticleManager.prototype.addArticle = function (articleNode) {
         var article = $(articleNode);
@@ -320,52 +323,53 @@ var ArticleManager = (function () {
         else {
             article.css("display", "");
         }
-        if (this.subscription.isSortingEnabled()) {
-            this.sortArticle(article);
+        this.articlesCount++;
+        if (this.subscription.isSortingEnabled() && this.articlesCount == this.currentUnreadCount) {
+            this.sortArticles();
         }
     };
-    ArticleManager.prototype.sortArticle = function (article) {
+    ArticleManager.prototype.sortArticles = function () {
+        var _this = this;
         var sortingType = this.subscription.getSortingType();
-        if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
-            var title = article.attr(ext.articleTitleAttribute).toLowerCase();
-            this.titles.push(title);
-            this.titles.sort();
-            if (sortingType == SortingType.TitleDesc) {
-                this.titles.reverse();
+        var articlesArray = $(ext.articleSelector).toArray();
+        articlesArray.sort(function (a, b) {
+            if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
+                var titleA = _this.getTitle(a);
+                var titleB = _this.getTitle(b);
+                var sorting = titleA === titleB ? 0 : (titleA > titleB ? 1 : -1);
+                if (sortingType == SortingType.TitleDesc) {
+                    sorting = sorting * -1;
+                }
+                return sorting;
             }
-            var index = jQuery.inArray(title, this.titles);
-            this.insertIndex(article, index);
-        }
-        else if (sortingType == SortingType.PopularityAsc || sortingType == SortingType.PopularityDesc) {
-            var popularityStr = article.find(ext.popularitySelector).text().trim();
-            popularityStr = popularityStr.replace("+", "");
-            if (popularityStr.indexOf("K") > -1) {
-                popularityStr = popularityStr.replace("K", "");
-                popularityStr += "000";
+            else {
+                var popA = _this.getPopularity(a);
+                var popB = _this.getPopularity(b);
+                var i = ((sortingType == SortingType.PopularityAsc) ? 1 : -1);
+                return (popA - popB) * i;
             }
-            var popularityNumber = Number(popularityStr);
-            if (popularityNumber < 100) {
-                popularityNumber = 1;
-            }
-            this.popularityArray.push(popularityNumber);
-            this.popularityArray.sort(function (a, b) {
-                var i = ((sortingType == SortingType.PopularityAsc) ? -1 : 1);
-                return (b - a) * i;
-            });
-            index = this.popularityArray.lastIndexOf(popularityNumber);
-            this.insertIndex(article, index);
-        }
+        });
+        var parent = $(articlesArray[0]).parent();
+        parent.empty();
+        articlesArray.forEach(function (article) {
+            parent.append($(article));
+        });
     };
-    ArticleManager.prototype.insertIndex = function (element, i) {
-        // The elemen0t we want to swap with
-        var $target = element.parent().children().eq(i);
-        // Determine the direction of the appended index so we know what side to place it on
-        if (element.index() > i) {
-            $target.before(element);
+    ArticleManager.prototype.getTitle = function (article) {
+        return $(article).attr(ext.articleTitleAttribute).toLowerCase();
+    };
+    ArticleManager.prototype.getPopularity = function (article) {
+        var popularityStr = $(article).find(ext.popularitySelector).text().trim();
+        popularityStr = popularityStr.replace("+", "");
+        if (popularityStr.indexOf("K") > -1) {
+            popularityStr = popularityStr.replace("K", "");
+            popularityStr += "000";
         }
-        else {
-            $target.after(element);
+        var popularityNumber = Number(popularityStr);
+        if (popularityNumber < 100) {
+            popularityNumber = 1;
         }
+        return popularityNumber;
     };
     return ArticleManager;
 }());
@@ -416,7 +420,7 @@ var UIManager = (function () {
     UIManager.prototype.updateSubscription = function () {
         var globalSettingsEnabled = this.globalSettingsEnabledCB.isEnabled();
         this.subscription = this.subscriptionManager.loadSubscription(globalSettingsEnabled);
-        this.articleManager.setSubscription(this.subscription);
+        this.articleManager.update(this.subscriptionManager);
         this.updateSubscriptionTitle(globalSettingsEnabled);
     };
     UIManager.prototype.updateMenu = function () {
@@ -695,10 +699,10 @@ $(document).ready(function () {
     var uiManager = new UIManager();
     var uiManagerBind = callbackBindedTo(uiManager);
     $("head").append("<style>" + templates.styleCSS + "</style>");
-    NodeCreationObserver.onCreation(ext.pageChangeSelector, function () {
+    NodeCreationObserver.onCreation(ext.subscriptionChangeSelector, function () {
         console.log("Feedly page fully loaded");
         uiManager.init();
         NodeCreationObserver.onCreation(ext.articleSelector, uiManagerBind(uiManager.addArticle));
-        NodeCreationObserver.onCreation(ext.pageChangeSelector, uiManagerBind(uiManager.updatePage));
+        NodeCreationObserver.onCreation(ext.subscriptionChangeSelector, uiManagerBind(uiManager.updatePage));
     }, true);
 });

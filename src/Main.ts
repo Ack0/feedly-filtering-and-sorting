@@ -8,10 +8,10 @@ $(document).ready(function () {
     var uiManagerBind = callbackBindedTo(uiManager);
     $("head").append("<style>" + templates.styleCSS + "</style>");
 
-    NodeCreationObserver.onCreation(ext.pageChangeSelector, function() {
+    NodeCreationObserver.onCreation(ext.subscriptionChangeSelector, function() {
         console.log("Feedly page fully loaded");
         uiManager.init();
         NodeCreationObserver.onCreation(ext.articleSelector, uiManagerBind(uiManager.addArticle));
-        NodeCreationObserver.onCreation(ext.pageChangeSelector, uiManagerBind(uiManager.updatePage));
+        NodeCreationObserver.onCreation(ext.subscriptionChangeSelector, uiManagerBind(uiManager.updatePage));
     }, true);
 });

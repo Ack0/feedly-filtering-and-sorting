@@ -2,24 +2,25 @@
 
 import {FilteringType, SortingType} from "./DataTypes";
 import {Subscription} from "./Subscription";
+import {SubscriptionManager} from "./SubscriptionManager";
 
 export class ArticleManager {
-    titles = [];
-    popularityArray = [];
-    private subscription: Subscription;
+    articlesCount = 0;
+    currentUnreadCount = 0;
+    subscription: Subscription;
 
-    setSubscription(subscription: Subscription) {
-        this.subscription = subscription;
+    update(subscriptionManager: SubscriptionManager) {
+        this.subscription = subscriptionManager.getCurrentSubscription();
+        this.currentUnreadCount = subscriptionManager.getCurrentUnreadCount();
     }
 
     refreshArticles() {
         this.resetArticles();
         $(ext.articleSelector).toArray().forEach(this.addArticle, this);
     }
-    
+
     resetArticles() {
-        this.titles = [];
-        this.popularityArray = [];
+        this.articlesCount = 0;
     }
 
     addArticle(articleNode: Node) {
@@ -55,53 +56,54 @@ export class ArticleManager {
             article.css("display", "");
         }
 
-        if (this.subscription.isSortingEnabled()) {
-            this.sortArticle(article);
+        this.articlesCount++;
+        if (this.subscription.isSortingEnabled() && this.articlesCount == this.currentUnreadCount) {
+            this.sortArticles();
         }
     }
 
-    sortArticle(article: JQuery) {
+    sortArticles() {
         var sortingType = this.subscription.getSortingType();
-        if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
-            var title = article.attr(ext.articleTitleAttribute).toLowerCase();
-            this.titles.push(title);
-            this.titles.sort();
-            if (sortingType == SortingType.TitleDesc) {
-                this.titles.reverse();
+        var articlesArray: Node[] = $(ext.articleSelector).toArray();
+        articlesArray.sort((a: Node, b: Node) => {
+            if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
+                var titleA = this.getTitle(a);
+                var titleB = this.getTitle(b);
+                var sorting = titleA === titleB ? 0 : (titleA > titleB ? 1 : -1);
+                if (sortingType == SortingType.TitleDesc) {
+                    sorting = sorting * -1;
+                }
+                return sorting;
+            } else {
+                var popA = this.getPopularity(a);
+                var popB = this.getPopularity(b);
+                var i = ((sortingType == SortingType.PopularityAsc) ? 1 : -1);
+                return (popA - popB) * i;
             }
-            var index = jQuery.inArray(title, this.titles);
-            this.insertIndex(article, index);
-        }
-        else if (sortingType == SortingType.PopularityAsc || sortingType == SortingType.PopularityDesc) {
-            var popularityStr = article.find(ext.popularitySelector).text().trim();
-            popularityStr = popularityStr.replace("+", "");
-            if (popularityStr.indexOf("K") > -1) {
-                popularityStr = popularityStr.replace("K", "");
-                popularityStr += "000";
-            }
-            var popularityNumber = Number(popularityStr);
-            if (popularityNumber < 100) {
-                popularityNumber = 1;
-            }
-            this.popularityArray.push(popularityNumber);
-            this.popularityArray.sort(function (a, b) {
-                var i = ((sortingType == SortingType.PopularityAsc) ? -1 : 1);
-                return (b - a) * i;
-            });
-            index = this.popularityArray.lastIndexOf(popularityNumber);
-            this.insertIndex(article, index);
-        }
-    }
-    
-    insertIndex(element: JQuery, i: number) {
-        // The elemen0t we want to swap with
-        var $target = element.parent().children().eq(i);
+        });
 
-        // Determine the direction of the appended index so we know what side to place it on
-        if (element.index() > i) {
-            $target.before(element);
-        } else {
-            $target.after(element);
+        var parent = $(articlesArray[0]).parent();
+        parent.empty();
+        articlesArray.forEach((article) => {
+            parent.append($(article));
+        });
+    }
+
+    getTitle(article: Node): string {
+        return $(article).attr(ext.articleTitleAttribute).toLowerCase();
+    }
+
+    getPopularity(article: Node): number {
+        var popularityStr = $(article).find(ext.popularitySelector).text().trim();
+        popularityStr = popularityStr.replace("+", "");
+        if (popularityStr.indexOf("K") > -1) {
+            popularityStr = popularityStr.replace("K", "");
+            popularityStr += "000";
         }
+        var popularityNumber = Number(popularityStr);
+        if (popularityNumber < 100) {
+            popularityNumber = 1;
+        }
+        return popularityNumber;
     }
 }

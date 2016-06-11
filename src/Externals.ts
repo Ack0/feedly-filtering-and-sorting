@@ -8,7 +8,7 @@ var ext = {
 	
 	"settingsBtnPredecessorSelector": "#pageActionCustomize, #floatingPageActionCustomize",
 	"articleSelector": "#section0_column0 > div",
-	"pageChangeSelector": "h1#feedlyTitleBar > .hhint",
+	"subscriptionChangeSelector": "h1#feedlyTitleBar > .hhint",
 	"articleTitleAttribute": "data-title",
 	"popularitySelector": ".nbrRecommendations",
 	"unreadCountSelector" : "#feedlyTitleBar [class*='UnreadCount']",

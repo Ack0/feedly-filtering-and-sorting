@@ -8,11 +8,11 @@ import {CheckBox} from "./CheckBox";
 import {$id, bindMarkup} from "./Utils";
 
 export class UIManager {
-    subscriptionManager : SubscriptionManager;
-    articleManager : ArticleManager;
+    subscriptionManager: SubscriptionManager;
+    articleManager: ArticleManager;
     subscription: Subscription;
-    autoLoadAllArticlesCB : CheckBox;
-    globalSettingsEnabledCB : CheckBox;
+    autoLoadAllArticlesCB: CheckBox;
+    globalSettingsEnabledCB: CheckBox;
 
     keywordToId = {};
     idCount = 1;
@@ -33,7 +33,7 @@ export class UIManager {
         this.updatePage();
         this.initSettingsEvents();
     }
-    
+
     updatePage() {
         this.resetPage();
         this.updateSubscription();
@@ -48,7 +48,7 @@ export class UIManager {
         this.updatePage();
         this.refreshFilteringAndSorting();
     }
-    
+
     refreshFilteringAndSorting() {
         this.articleManager.refreshArticles();
     }
@@ -56,10 +56,10 @@ export class UIManager {
     updateSubscription() {
         var globalSettingsEnabled = this.globalSettingsEnabledCB.isEnabled();
         this.subscription = this.subscriptionManager.loadSubscription(globalSettingsEnabled);
-        this.articleManager.setSubscription(this.subscription);
+        this.articleManager.update(this.subscriptionManager);
         this.updateSubscriptionTitle(globalSettingsEnabled);
     }
-    
+
     updateMenu() {
         this.updateSubscriptionSettings();
         getFilteringTypes().forEach((type) => {
@@ -84,7 +84,7 @@ export class UIManager {
     updateImportOptionsHTML() {
         $id("FFnS_ImportMenu_SubscriptionSelect").html(this.getImportOptionsHTML());
     }
-    
+
     initUI() {
         this.initSettingsMenu();
         this.initShowSettingsBtns();
@@ -200,7 +200,7 @@ export class UIManager {
     private setUpFilteringListManagementEvents(type: FilteringType) {
         var ids = this.getIds(type);
         var keywordList = this.subscription.getFilteringList(type);
-        
+
         // Add button
         $id(this.getHTMLId(ids.plusBtnId)).click(() => {
             var input = $id(this.getHTMLId(ids.inputId));
@@ -226,7 +226,7 @@ export class UIManager {
     private setUpKeywordButtonsEvents(type: FilteringType) {
         var ids = this.getIds(type);
         var keywordList = this.subscription.getFilteringList(type);
-        
+
         // Keyword buttons events
         var t = this;
         for (var i = 0; i < keywordList.length; i++) {
@@ -240,12 +240,12 @@ export class UIManager {
             });
         }
     }
-    
+
     updateFilteringList(type: FilteringType) {
         var ids = this.getIds(type);
         var filteringList = this.subscription.getFilteringList(type);
         var filteringKeywordsHTML = "";
-        
+
         for (var i = 0; i < filteringList.length; i++) {
             var keyword = filteringList[i];
             var keywordId = this.getKeywordId(ids.typeId, keyword);
@@ -255,7 +255,7 @@ export class UIManager {
             ]);
             filteringKeywordsHTML += filteringKeywordHTML;
         }
-        
+
         $id(ids.filetringKeywordsId).html(filteringKeywordsHTML);
         this.refreshFilteringAndSorting();
         this.setUpKeywordButtonsEvents(type);

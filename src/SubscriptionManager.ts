@@ -57,6 +57,10 @@ export class SubscriptionManager {
         this.currentUnreadCount = isNaN(unreadCount) ? 0 : unreadCount;
     }
     
+    getCurrentSubscription() {
+        return this.currentSubscription;
+    }
+    
     getCurrentUnreadCount() {
         return this.currentUnreadCount;
     }
