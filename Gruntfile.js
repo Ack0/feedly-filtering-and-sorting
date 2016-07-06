@@ -76,17 +76,26 @@ module.exports = function(grunt) {
                 options: {
                     replacements: replacements
                 }
+            },
+            'version': {
+                files: [{src: 'resources/Header.js', dest: 'target/Header.js'}],
+                options: {
+                    replacements: [{
+                        pattern: '{{version}}',
+                        replacement: '<%= pkg.version %>'
+                    }]
+                }
             }
         },
         concat: {
             script: {
-                src: ['resources/Header.js'].concat(targetFiles),
-                dest: 'script/<%= pkg.name %>.user.js'
+                src: ['target/Header.js'].concat(targetFiles),
+                dest: 'script/<%= pkg.finalName %>.user.js'
             }
         },
         copy: {
             deploy: {
-                src: 'script/<%= pkg.name %>.user.js',
+                src: 'script/<%= pkg.finalName %>.user.js',
                 dest: '<%= deploy.path %>',
                 filter: function(filepath) {
                     var dest = grunt.config('copy.deploy.dest');
@@ -102,5 +111,12 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks('grunt-contrib-watch');
 
-    grunt.registerTask('default', ['ts', 'string-replace:ts', 'string-replace:templates', 'concat:script', 'copy:deploy']);
+    grunt.registerTask('default', [
+        'ts',
+        'string-replace:ts',
+        'string-replace:templates',
+        'string-replace:version',
+        'concat:script',
+        'copy:deploy'
+    ]);
 };
