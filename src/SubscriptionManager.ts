@@ -19,6 +19,7 @@ export class SubscriptionManager {
     }
     
     loadSubscription(globalSettingsEnabled: boolean) : Subscription {
+        this.currentUnreadCount = 0;
         var subscription: Subscription;
         if(globalSettingsEnabled) {
             subscription = this.globalSettings;

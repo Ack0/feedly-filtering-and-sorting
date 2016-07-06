@@ -27,7 +27,7 @@ var ext = {
     "subscriptionChangeSelector": "h1#feedlyTitleBar > .hhint",
     "articleTitleAttribute": "data-title",
     "popularitySelector": ".nbrRecommendations",
-    "unreadCountSelector": "#feedlyTitleBar [class*='UnreadCount']",
+    "unreadCountSelector": ".hhint > [class*='UnreadCount']",
     "fullyLoadedArticlesSelector": "#fullyLoadedFollowing"
 };
 
@@ -232,6 +232,7 @@ var SubscriptionManager = (function () {
         this.dao.setDefaultSubscription(this.globalSettings);
     }
     SubscriptionManager.prototype.loadSubscription = function (globalSettingsEnabled) {
+        this.currentUnreadCount = 0;
         var subscription;
         if (globalSettingsEnabled) {
             subscription = this.globalSettings;
@@ -273,6 +274,8 @@ var SubscriptionManager = (function () {
 var ArticleManager = (function () {
     function ArticleManager(subscriptionManager) {
         this.articlesCount = 0;
+        this.hiddenCount = 0;
+        this.hiddingInfoClass = "FFnS_Hidding_Info";
         this.subscriptionManager = subscriptionManager;
     }
     ArticleManager.prototype.refreshArticles = function () {
@@ -281,6 +284,8 @@ var ArticleManager = (function () {
     };
     ArticleManager.prototype.resetArticles = function () {
         this.articlesCount = 0;
+        this.hiddenCount = 0;
+        $("." + this.hiddingInfoClass).remove();
     };
     ArticleManager.prototype.getCurrentSub = function () {
         return this.subscriptionManager.getCurrentSubscription();
@@ -290,29 +295,32 @@ var ArticleManager = (function () {
     };
     ArticleManager.prototype.addArticle = function (articleNode) {
         var article = $(articleNode);
+        var sub = this.getCurrentSub();
         var title = article.attr(ext.articleTitleAttribute).toLowerCase();
-        if (this.getCurrentSub().isFilteringEnabled() || this.getCurrentSub().isRestrictingEnabled()) {
-            var restrictedOnKeywords = this.getCurrentSub().getFilteringList(FilteringType.RestrictedOn);
-            var filteredOutKeywords = this.getCurrentSub().getFilteringList(FilteringType.FilteredOut);
-            var keep = false;
+        var hiddingMode = sub.isFilteringEnabled() || sub.isRestrictingEnabled();
+        if (hiddingMode) {
+            var restrictedOnKeywords = sub.getFilteringList(FilteringType.RestrictedOn);
+            var filteredOutKeywords = sub.getFilteringList(FilteringType.FilteredOut);
+            var hide = false;
             var restrictedCount = restrictedOnKeywords.length;
-            if (this.getCurrentSub().isRestrictingEnabled() && restrictedCount > 0) {
-                keep = true;
-                for (var i = 0; i < restrictedCount && keep; i++) {
+            if (sub.isRestrictingEnabled() && restrictedCount > 0) {
+                hide = true;
+                for (var i = 0; i < restrictedCount && hide; i++) {
                     if (title.indexOf(restrictedOnKeywords[i].toLowerCase()) != -1) {
-                        keep = false;
+                        hide = false;
                     }
                 }
             }
-            if (this.getCurrentSub().isFilteringEnabled()) {
-                for (var i = 0; i < filteredOutKeywords.length && !keep; i++) {
+            if (sub.isFilteringEnabled()) {
+                for (var i = 0; i < filteredOutKeywords.length && !hide; i++) {
                     if (title.indexOf(filteredOutKeywords[i].toLowerCase()) != -1) {
-                        keep = true;
+                        hide = true;
                     }
                 }
             }
-            if (keep) {
+            if (hide) {
                 article.css("display", "none");
+                this.hiddenCount++;
             }
             else {
                 article.css("display", "");
@@ -322,8 +330,13 @@ var ArticleManager = (function () {
             article.css("display", "");
         }
         this.articlesCount++;
-        if (this.getCurrentSub().isSortingEnabled() && this.articlesCount == this.getCurrentUnreadCount()) {
-            this.sortArticles();
+        if (this.articlesCount == this.getCurrentUnreadCount()) {
+            if (sub.isSortingEnabled()) {
+                this.sortArticles();
+            }
+            if (hiddingMode) {
+                $(ext.unreadCountSelector).append("<span class=" + this.hiddingInfoClass + ">(hidden: " + this.hiddenCount + ")</span>");
+            }
         }
     };
     ArticleManager.prototype.sortArticles = function () {

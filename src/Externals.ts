@@ -11,6 +11,6 @@ var ext = {
 	"subscriptionChangeSelector": "h1#feedlyTitleBar > .hhint",
 	"articleTitleAttribute": "data-title",
 	"popularitySelector": ".nbrRecommendations",
-	"unreadCountSelector" : "#feedlyTitleBar [class*='UnreadCount']",
+	"unreadCountSelector" : ".hhint > [class*='UnreadCount']",
 	"fullyLoadedArticlesSelector" : "#fullyLoadedFollowing" 
 }

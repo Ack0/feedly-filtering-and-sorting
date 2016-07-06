@@ -5,8 +5,10 @@ import {Subscription} from "./Subscription";
 import {SubscriptionManager} from "./SubscriptionManager";
 
 export class ArticleManager {
-    articlesCount = 0;
     subscriptionManager: SubscriptionManager;
+    articlesCount = 0;
+    hiddenCount = 0;
+    hiddingInfoClass = "FFnS_Hidding_Info";
 
     constructor(subscriptionManager: SubscriptionManager) {
         this.subscriptionManager = subscriptionManager;
@@ -19,6 +21,8 @@ export class ArticleManager {
 
     resetArticles() {
         this.articlesCount = 0;
+        this.hiddenCount = 0;
+        $("." + this.hiddingInfoClass).remove();
     }
 
     getCurrentSub(): Subscription {
@@ -31,30 +35,33 @@ export class ArticleManager {
 
     addArticle(articleNode: Node) {
         var article = $(articleNode);
+        var sub = this.getCurrentSub();
         var title = article.attr(ext.articleTitleAttribute).toLowerCase();
-        if (this.getCurrentSub().isFilteringEnabled() || this.getCurrentSub().isRestrictingEnabled()) {
-            var restrictedOnKeywords = this.getCurrentSub().getFilteringList(FilteringType.RestrictedOn);
-            var filteredOutKeywords = this.getCurrentSub().getFilteringList(FilteringType.FilteredOut);
+        var hiddingMode = sub.isFilteringEnabled() || sub.isRestrictingEnabled();
+        if (hiddingMode) {
+            var restrictedOnKeywords = sub.getFilteringList(FilteringType.RestrictedOn);
+            var filteredOutKeywords = sub.getFilteringList(FilteringType.FilteredOut);
 
-            var keep = false;
+            var hide = false;
             var restrictedCount = restrictedOnKeywords.length;
-            if (this.getCurrentSub().isRestrictingEnabled() && restrictedCount > 0) {
-                keep = true;
-                for (var i = 0; i < restrictedCount && keep; i++) {
+            if (sub.isRestrictingEnabled() && restrictedCount > 0) {
+                hide = true;
+                for (var i = 0; i < restrictedCount && hide; i++) {
                     if (title.indexOf(restrictedOnKeywords[i].toLowerCase()) != -1) {
-                        keep = false;
+                        hide = false;
                     }
                 }
             }
-            if (this.getCurrentSub().isFilteringEnabled()) {
-                for (var i = 0; i < filteredOutKeywords.length && !keep; i++) {
+            if (sub.isFilteringEnabled()) {
+                for (var i = 0; i < filteredOutKeywords.length && !hide; i++) {
                     if (title.indexOf(filteredOutKeywords[i].toLowerCase()) != -1) {
-                        keep = true;
+                        hide = true;
                     }
                 }
             }
-            if (keep) {
+            if (hide) {
                 article.css("display", "none");
+                this.hiddenCount++;
             } else {
                 article.css("display", "");
             }
@@ -63,8 +70,13 @@ export class ArticleManager {
         }
 
         this.articlesCount++;
-        if (this.getCurrentSub().isSortingEnabled() && this.articlesCount == this.getCurrentUnreadCount()) {
-            this.sortArticles();
+        if (this.articlesCount == this.getCurrentUnreadCount()) {
+            if (sub.isSortingEnabled()) {
+                this.sortArticles();
+            }
+            if (hiddingMode) {
+                $(ext.unreadCountSelector).append("<span class=" + this.hiddingInfoClass + ">(hidden: " + this.hiddenCount + ")</span>");
+            }
         }
     }
 
