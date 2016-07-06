@@ -26,7 +26,7 @@ export class UIManager {
 
     init() {
         this.subscriptionManager = new SubscriptionManager();
-        this.articleManager = new ArticleManager();
+        this.articleManager = new ArticleManager(this.subscriptionManager);
         this.autoLoadAllArticlesCB = new CheckBox("autoLoadAllArticles", this, false);
         this.globalSettingsEnabledCB = new CheckBox("globalSettingsEnabled", this);
         this.initUI();
@@ -56,7 +56,6 @@ export class UIManager {
     updateSubscription() {
         var globalSettingsEnabled = this.globalSettingsEnabledCB.isEnabled();
         this.subscription = this.subscriptionManager.loadSubscription(globalSettingsEnabled);
-        this.articleManager.update(this.subscriptionManager);
         this.updateSubscriptionTitle(globalSettingsEnabled);
     }
 
@@ -270,10 +269,8 @@ export class UIManager {
         if (!this.autoLoadAllArticlesCB.isEnabled()) {
             return;
         }
-        if (this.subscriptionManager.getCurrentUnreadCount() == 0) {
-            return;
-        }
         if (this.isVisible($(ext.fullyLoadedArticlesSelector))) {
+            this.subscriptionManager.updateUnreadCount();
             window.scrollTo(0, 0);
             return;
         }

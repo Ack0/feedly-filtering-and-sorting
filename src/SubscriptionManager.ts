@@ -19,7 +19,6 @@ export class SubscriptionManager {
     }
     
     loadSubscription(globalSettingsEnabled: boolean) : Subscription {
-        this.updateUnreadCount();
         var subscription: Subscription;
         if(globalSettingsEnabled) {
             subscription = this.globalSettings;
@@ -51,10 +50,7 @@ export class SubscriptionManager {
     }
     
     updateUnreadCount() {
-        var unreadCountHint = $(ext.unreadCountSelector).text().trim();
-        var unreadCountStr = unreadCountHint.split(" ")[0];
-        var unreadCount = Number(unreadCountStr);
-        this.currentUnreadCount = isNaN(unreadCount) ? 0 : unreadCount;
+        this.currentUnreadCount = $(ext.articleSelector).length;
     }
     
     getCurrentSubscription() {

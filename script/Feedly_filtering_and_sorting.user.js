@@ -10,7 +10,7 @@
 // @require     http://code.jquery.com/jquery.min.js
 // @require     https://raw.githubusercontent.com/soufianesakhi/node-creation-observer-js/master/release/node-creation-observer-latest.js
 // @include     *://feedly.com/*
-// @version     1.0.1
+// @version     1.0.2
 // @grant       GM_setValue
 // @grant       GM_getValue
 // @grant       GM_listValues
@@ -232,7 +232,6 @@ var SubscriptionManager = (function () {
         this.dao.setDefaultSubscription(this.globalSettings);
     }
     SubscriptionManager.prototype.loadSubscription = function (globalSettingsEnabled) {
-        this.updateUnreadCount();
         var subscription;
         if (globalSettingsEnabled) {
             subscription = this.globalSettings;
@@ -260,10 +259,7 @@ var SubscriptionManager = (function () {
         return url;
     };
     SubscriptionManager.prototype.updateUnreadCount = function () {
-        var unreadCountHint = $(ext.unreadCountSelector).text().trim();
-        var unreadCountStr = unreadCountHint.split(" ")[0];
-        var unreadCount = Number(unreadCountStr);
-        this.currentUnreadCount = isNaN(unreadCount) ? 0 : unreadCount;
+        this.currentUnreadCount = $(ext.articleSelector).length;
     };
     SubscriptionManager.prototype.getCurrentSubscription = function () {
         return this.currentSubscription;
@@ -275,14 +271,10 @@ var SubscriptionManager = (function () {
 }());
 
 var ArticleManager = (function () {
-    function ArticleManager() {
+    function ArticleManager(subscriptionManager) {
         this.articlesCount = 0;
-        this.currentUnreadCount = 0;
+        this.subscriptionManager = subscriptionManager;
     }
-    ArticleManager.prototype.update = function (subscriptionManager) {
-        this.subscription = subscriptionManager.getCurrentSubscription();
-        this.currentUnreadCount = subscriptionManager.getCurrentUnreadCount();
-    };
     ArticleManager.prototype.refreshArticles = function () {
         this.resetArticles();
         $(ext.articleSelector).toArray().forEach(this.addArticle, this);
@@ -290,15 +282,21 @@ var ArticleManager = (function () {
     ArticleManager.prototype.resetArticles = function () {
         this.articlesCount = 0;
     };
+    ArticleManager.prototype.getCurrentSub = function () {
+        return this.subscriptionManager.getCurrentSubscription();
+    };
+    ArticleManager.prototype.getCurrentUnreadCount = function () {
+        return this.subscriptionManager.getCurrentUnreadCount();
+    };
     ArticleManager.prototype.addArticle = function (articleNode) {
         var article = $(articleNode);
         var title = article.attr(ext.articleTitleAttribute).toLowerCase();
-        if (this.subscription.isFilteringEnabled() || this.subscription.isRestrictingEnabled()) {
-            var restrictedOnKeywords = this.subscription.getFilteringList(FilteringType.RestrictedOn);
-            var filteredOutKeywords = this.subscription.getFilteringList(FilteringType.FilteredOut);
+        if (this.getCurrentSub().isFilteringEnabled() || this.getCurrentSub().isRestrictingEnabled()) {
+            var restrictedOnKeywords = this.getCurrentSub().getFilteringList(FilteringType.RestrictedOn);
+            var filteredOutKeywords = this.getCurrentSub().getFilteringList(FilteringType.FilteredOut);
             var keep = false;
             var restrictedCount = restrictedOnKeywords.length;
-            if (this.subscription.isRestrictingEnabled() && restrictedCount > 0) {
+            if (this.getCurrentSub().isRestrictingEnabled() && restrictedCount > 0) {
                 keep = true;
                 for (var i = 0; i < restrictedCount && keep; i++) {
                     if (title.indexOf(restrictedOnKeywords[i].toLowerCase()) != -1) {
@@ -306,7 +304,7 @@ var ArticleManager = (function () {
                     }
                 }
             }
-            if (this.subscription.isFilteringEnabled()) {
+            if (this.getCurrentSub().isFilteringEnabled()) {
                 for (var i = 0; i < filteredOutKeywords.length && !keep; i++) {
                     if (title.indexOf(filteredOutKeywords[i].toLowerCase()) != -1) {
                         keep = true;
@@ -324,13 +322,13 @@ var ArticleManager = (function () {
             article.css("display", "");
         }
         this.articlesCount++;
-        if (this.subscription.isSortingEnabled() && this.articlesCount == this.currentUnreadCount) {
+        if (this.getCurrentSub().isSortingEnabled() && this.articlesCount == this.getCurrentUnreadCount()) {
             this.sortArticles();
         }
     };
     ArticleManager.prototype.sortArticles = function () {
         var _this = this;
-        var sortingType = this.subscription.getSortingType();
+        var sortingType = this.getCurrentSub().getSortingType();
         var articlesArray = $(ext.articleSelector).toArray();
         articlesArray.sort(function (a, b) {
             if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
@@ -395,7 +393,7 @@ var UIManager = (function () {
     }
     UIManager.prototype.init = function () {
         this.subscriptionManager = new SubscriptionManager();
-        this.articleManager = new ArticleManager();
+        this.articleManager = new ArticleManager(this.subscriptionManager);
         this.autoLoadAllArticlesCB = new CheckBox("autoLoadAllArticles", this, false);
         this.globalSettingsEnabledCB = new CheckBox("globalSettingsEnabled", this);
         this.initUI();
@@ -420,7 +418,6 @@ var UIManager = (function () {
     UIManager.prototype.updateSubscription = function () {
         var globalSettingsEnabled = this.globalSettingsEnabledCB.isEnabled();
         this.subscription = this.subscriptionManager.loadSubscription(globalSettingsEnabled);
-        this.articleManager.update(this.subscriptionManager);
         this.updateSubscriptionTitle(globalSettingsEnabled);
     };
     UIManager.prototype.updateMenu = function () {
@@ -608,10 +605,8 @@ var UIManager = (function () {
         if (!this.autoLoadAllArticlesCB.isEnabled()) {
             return;
         }
-        if (this.subscriptionManager.getCurrentUnreadCount() == 0) {
-            return;
-        }
         if (this.isVisible($(ext.fullyLoadedArticlesSelector))) {
+            this.subscriptionManager.updateUnreadCount();
             window.scrollTo(0, 0);
             return;
         }

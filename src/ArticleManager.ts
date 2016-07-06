@@ -6,12 +6,10 @@ import {SubscriptionManager} from "./SubscriptionManager";
 
 export class ArticleManager {
     articlesCount = 0;
-    currentUnreadCount = 0;
-    subscription: Subscription;
+    subscriptionManager: SubscriptionManager;
 
-    update(subscriptionManager: SubscriptionManager) {
-        this.subscription = subscriptionManager.getCurrentSubscription();
-        this.currentUnreadCount = subscriptionManager.getCurrentUnreadCount();
+    constructor(subscriptionManager: SubscriptionManager) {
+        this.subscriptionManager = subscriptionManager;
     }
 
     refreshArticles() {
@@ -23,16 +21,24 @@ export class ArticleManager {
         this.articlesCount = 0;
     }
 
+    getCurrentSub(): Subscription {
+        return this.subscriptionManager.getCurrentSubscription();
+    }
+
+    getCurrentUnreadCount() {
+        return this.subscriptionManager.getCurrentUnreadCount();
+    }
+
     addArticle(articleNode: Node) {
         var article = $(articleNode);
         var title = article.attr(ext.articleTitleAttribute).toLowerCase();
-        if (this.subscription.isFilteringEnabled() || this.subscription.isRestrictingEnabled()) {
-            var restrictedOnKeywords = this.subscription.getFilteringList(FilteringType.RestrictedOn);
-            var filteredOutKeywords = this.subscription.getFilteringList(FilteringType.FilteredOut);
+        if (this.getCurrentSub().isFilteringEnabled() || this.getCurrentSub().isRestrictingEnabled()) {
+            var restrictedOnKeywords = this.getCurrentSub().getFilteringList(FilteringType.RestrictedOn);
+            var filteredOutKeywords = this.getCurrentSub().getFilteringList(FilteringType.FilteredOut);
 
             var keep = false;
             var restrictedCount = restrictedOnKeywords.length;
-            if (this.subscription.isRestrictingEnabled() && restrictedCount > 0) {
+            if (this.getCurrentSub().isRestrictingEnabled() && restrictedCount > 0) {
                 keep = true;
                 for (var i = 0; i < restrictedCount && keep; i++) {
                     if (title.indexOf(restrictedOnKeywords[i].toLowerCase()) != -1) {
@@ -40,7 +46,7 @@ export class ArticleManager {
                     }
                 }
             }
-            if (this.subscription.isFilteringEnabled()) {
+            if (this.getCurrentSub().isFilteringEnabled()) {
                 for (var i = 0; i < filteredOutKeywords.length && !keep; i++) {
                     if (title.indexOf(filteredOutKeywords[i].toLowerCase()) != -1) {
                         keep = true;
@@ -57,13 +63,13 @@ export class ArticleManager {
         }
 
         this.articlesCount++;
-        if (this.subscription.isSortingEnabled() && this.articlesCount == this.currentUnreadCount) {
+        if (this.getCurrentSub().isSortingEnabled() && this.articlesCount == this.getCurrentUnreadCount()) {
             this.sortArticles();
         }
     }
 
     sortArticles() {
-        var sortingType = this.subscription.getSortingType();
+        var sortingType = this.getCurrentSub().getSortingType();
         var articlesArray: Node[] = $(ext.articleSelector).toArray();
         articlesArray.sort((a: Node, b: Node) => {
             if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
