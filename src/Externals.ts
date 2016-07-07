@@ -8,6 +8,8 @@ var ext = {
 	
 	"settingsBtnPredecessorSelector": "#pageActionCustomize, #floatingPageActionCustomize",
 	"articleSelector": "#section0_column0 > div",
+	"articleLinkSelector": "a[id$=\"_main_title\"]",
+	"readArticleClass": "read",
 	"subscriptionChangeSelector": "h1#feedlyTitleBar > .hhint",
 	"articleTitleAttribute": "data-title",
 	"popularitySelector": ".nbrRecommendations",

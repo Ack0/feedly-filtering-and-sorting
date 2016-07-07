@@ -13,6 +13,7 @@ export class UIManager {
     subscription: Subscription;
     autoLoadAllArticlesCB: CheckBox;
     globalSettingsEnabledCB: CheckBox;
+    containsReadArticles = false;
 
     keywordToId = {};
     idCount = 1;
@@ -41,6 +42,7 @@ export class UIManager {
     }
 
     resetPage() {
+        this.containsReadArticles = false;
         this.articleManager.resetArticles();
     }
 
@@ -261,8 +263,22 @@ export class UIManager {
     }
 
     addArticle(articleNode: Node) {
+        this.checkReadArticles(articleNode);
+        if (this.containsReadArticles) {
+            return;
+        }
         this.tryAutoLoadAllArticles();
         this.articleManager.addArticle(articleNode);
+    }
+
+    checkReadArticles(articleNode: Node) {
+        if (!this.containsReadArticles) {
+            this.containsReadArticles = $(articleNode).find(ext.articleLinkSelector).hasClass(ext.readArticleClass);
+            if (this.containsReadArticles) {
+                this.articleManager.resetArticles();
+                window.scrollTo(0, 0);
+            }
+        }
     }
 
     tryAutoLoadAllArticles() {

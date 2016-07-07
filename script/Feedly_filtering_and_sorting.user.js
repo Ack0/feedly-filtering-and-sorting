@@ -10,7 +10,7 @@
 // @require     http://code.jquery.com/jquery.min.js
 // @require     https://raw.githubusercontent.com/soufianesakhi/node-creation-observer-js/master/release/node-creation-observer-latest.js
 // @include     *://feedly.com/*
-// @version     1.0.2
+// @version     1.0.3
 // @grant       GM_setValue
 // @grant       GM_getValue
 // @grant       GM_listValues
@@ -24,6 +24,8 @@ var ext = {
     "urlPrefixPattern": "https?:\/\/[^\/]+\/i\/",
     "settingsBtnPredecessorSelector": "#pageActionCustomize, #floatingPageActionCustomize",
     "articleSelector": "#section0_column0 > div",
+    "articleLinkSelector": "a[id$=\"_main_title\"]",
+    "readArticleClass": "read",
     "subscriptionChangeSelector": "h1#feedlyTitleBar > .hhint",
     "articleTitleAttribute": "data-title",
     "popularitySelector": ".nbrRecommendations",
@@ -395,6 +397,7 @@ var templates = {
 
 var UIManager = (function () {
     function UIManager() {
+        this.containsReadArticles = false;
         this.keywordToId = {};
         this.idCount = 1;
         this.settingsDivContainerId = this.getHTMLId("settingsDivContainer");
@@ -419,6 +422,7 @@ var UIManager = (function () {
         this.updateMenu();
     };
     UIManager.prototype.resetPage = function () {
+        this.containsReadArticles = false;
         this.articleManager.resetArticles();
     };
     UIManager.prototype.refreshPage = function () {
@@ -611,8 +615,21 @@ var UIManager = (function () {
         this.setUpKeywordButtonsEvents(type);
     };
     UIManager.prototype.addArticle = function (articleNode) {
+        this.checkReadArticles(articleNode);
+        if (this.containsReadArticles) {
+            return;
+        }
         this.tryAutoLoadAllArticles();
         this.articleManager.addArticle(articleNode);
+    };
+    UIManager.prototype.checkReadArticles = function (articleNode) {
+        if (!this.containsReadArticles) {
+            this.containsReadArticles = $(articleNode).find(ext.articleLinkSelector).hasClass(ext.readArticleClass);
+            if (this.containsReadArticles) {
+                this.articleManager.resetArticles();
+                window.scrollTo(0, 0);
+            }
+        }
     };
     UIManager.prototype.tryAutoLoadAllArticles = function () {
         if (!this.autoLoadAllArticlesCB.isEnabled()) {
