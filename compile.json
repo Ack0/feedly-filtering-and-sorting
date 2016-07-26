@@ -11,7 +11,8 @@
         "ArticleManager",
         "Templates",
         "UIManager",
-        "CheckBox",
+        "HTMLSubscription",
+        "HTMLGlobalSettings",
         "Main"
     ]
 }

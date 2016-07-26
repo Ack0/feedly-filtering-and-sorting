@@ -25,12 +25,17 @@ var ext = {
     "settingsBtnPredecessorSelector": "#pageActionCustomize, #floatingPageActionCustomize",
     "articleSelector": "#section0_column0 > div",
     "articleLinkSelector": "a[id$=\"_main_title\"]",
+    "publishAgeSelector": ".lastModified",
+    "publishAgeTimestampAttr": "title",
+    "publishAgeTimestampPattern": "title",
     "readArticleClass": "read",
     "subscriptionChangeSelector": "h1#feedlyTitleBar > .hhint",
     "articleTitleAttribute": "data-title",
+    "articleEntryIdAttribute": "data-inlineentryid",
     "popularitySelector": ".nbrRecommendations",
     "unreadCountSelector": ".hhint > [class*='UnreadCount']",
-    "fullyLoadedArticlesSelector": "#fullyLoadedFollowing"
+    "fullyLoadedArticlesSelector": "#fullyLoadedFollowing",
+    "lastReadEntryId": "FFnS_last_Read_Entry_Id"
 };
 
 var exported = {};
@@ -61,6 +66,11 @@ var SortingType = exported.SortingType;
     FilteringType[FilteringType["FilteredOut"] = 1] = "FilteredOut";
 })(exported.FilteringType || (exported.FilteringType = {}));
 var FilteringType = exported.FilteringType;
+(function (HTMLElementType) {
+    HTMLElementType[HTMLElementType["SelectBox"] = 0] = "SelectBox";
+    HTMLElementType[HTMLElementType["CheckBox"] = 1] = "CheckBox";
+})(exported.HTMLElementType || (exported.HTMLElementType = {}));
+var HTMLElementType = exported.HTMLElementType;
 function getFilteringTypes() {
     return [FilteringType.FilteredOut, FilteringType.RestrictedOn];
 }
@@ -87,6 +97,7 @@ var SubscriptionDTO = (function () {
         this.restrictingEnabled = false;
         this.sortingEnabled = true;
         this.sortingType = SortingType.PopularityDesc;
+        this.advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
         this.filteringListsByType = {};
         this.url = url;
         getFilteringTypes().forEach(function (type) {
@@ -94,6 +105,16 @@ var SubscriptionDTO = (function () {
         });
     }
     return SubscriptionDTO;
+}());
+var AdvancedControlsReceivedPeriod = (function () {
+    function AdvancedControlsReceivedPeriod() {
+        this.maxHours = 6;
+        this.keepUnread = false;
+        this.hide = false;
+        this.showIfHot = false;
+        this.minPopularity = 200;
+    }
+    return AdvancedControlsReceivedPeriod;
 }());
 
 var Subscription = (function () {
@@ -138,6 +159,13 @@ var Subscription = (function () {
         this.dto.sortingEnabled = sortingEnabled;
         this.dao.save(this.dto);
     };
+    Subscription.prototype.getAdvancedControlsReceivedPeriod = function () {
+        return this.dto.advancedControlsReceivedPeriod;
+    };
+    Subscription.prototype.setAdvancedControlsReceivedPeriod = function (advancedControlsReceivedPeriod) {
+        this.dto.advancedControlsReceivedPeriod = advancedControlsReceivedPeriod;
+        this.dao.save(this.dto);
+    };
     Subscription.prototype.getSortingType = function () {
         return this.dto.sortingType;
     };
@@ -160,7 +188,7 @@ var Subscription = (function () {
         }
         this.dao.save(this.dto);
     };
-    Subscription.prototype.reset = function (type) {
+    Subscription.prototype.resetFilteringList = function (type) {
         this.getFilteringList(type).length = 0;
         this.dao.save(this.dto);
     };
@@ -170,6 +198,7 @@ var Subscription = (function () {
 var SubscriptionDAO = (function () {
     function SubscriptionDAO() {
         this.SUBSCRIPTION_ID_PREFIX = "subscription_";
+        this.GLOBAL_SETTINGS_SUBSCRIPTION_URL = "---global settings---";
     }
     SubscriptionDAO.prototype.save = function (dto) {
         var url = dto.url;
@@ -200,13 +229,16 @@ var SubscriptionDAO = (function () {
         clone.restrictingEnabled = dtoToClone.restrictingEnabled;
         clone.sortingEnabled = dtoToClone.sortingEnabled;
         clone.sortingType = dtoToClone.sortingType;
+        clone.advancedControlsReceivedPeriod = dtoToClone.advancedControlsReceivedPeriod != null ? dtoToClone.advancedControlsReceivedPeriod : new AdvancedControlsReceivedPeriod();
         getFilteringTypes().forEach(function (type) {
             clone.filteringListsByType[type] = dtoToClone.filteringListsByType[type].slice(0);
         });
         return clone;
     };
-    SubscriptionDAO.prototype.setDefaultSubscription = function (defaultSubscription) {
-        this.defaultSubscription = defaultSubscription.dto;
+    SubscriptionDAO.prototype.loadGlobalSettings = function () {
+        var globalSettings = this.load(this.GLOBAL_SETTINGS_SUBSCRIPTION_URL);
+        this.defaultSubscription = globalSettings.dto;
+        return globalSettings;
     };
     SubscriptionDAO.prototype.getAllSubscriptionURLs = function () {
         var _this = this;
@@ -226,12 +258,10 @@ var SubscriptionDAO = (function () {
 
 var SubscriptionManager = (function () {
     function SubscriptionManager() {
-        this.GLOBAL_SETTINGS_SUBSCRIPTION_URL = "---global settings---";
         this.urlPrefixPattern = new RegExp(ext.urlPrefixPattern, "i");
         this.currentUnreadCount = 0;
         this.dao = new SubscriptionDAO();
-        this.loadGlobalSettings();
-        this.dao.setDefaultSubscription(this.globalSettings);
+        this.globalSettings = this.dao.loadGlobalSettings();
     }
     SubscriptionManager.prototype.loadSubscription = function (globalSettingsEnabled) {
         this.currentUnreadCount = 0;
@@ -244,10 +274,6 @@ var SubscriptionManager = (function () {
             subscription = this.dao.load(url);
         }
         return this.currentSubscription = subscription;
-    };
-    SubscriptionManager.prototype.loadGlobalSettings = function () {
-        this.globalSettings = this.dao.load(this.GLOBAL_SETTINGS_SUBSCRIPTION_URL);
-        return this.globalSettings;
     };
     SubscriptionManager.prototype.importKeywords = function (url) {
         var importedSubscription = this.dao.load(url);
@@ -277,6 +303,7 @@ var ArticleManager = (function () {
     function ArticleManager(subscriptionManager) {
         this.articlesCount = 0;
         this.hiddenCount = 0;
+        this.minReadArticleAge = -1;
         this.hiddingInfoClass = "FFnS_Hidding_Info";
         this.subscriptionManager = subscriptionManager;
     }
@@ -287,6 +314,8 @@ var ArticleManager = (function () {
     ArticleManager.prototype.resetArticles = function () {
         this.articlesCount = 0;
         this.hiddenCount = 0;
+        this.minReadArticleAge = -1;
+        this.lastReadArticle = null;
         $("." + this.hiddingInfoClass).remove();
     };
     ArticleManager.prototype.getCurrentSub = function () {
@@ -299,8 +328,7 @@ var ArticleManager = (function () {
         var article = $(articleNode);
         var sub = this.getCurrentSub();
         var title = article.attr(ext.articleTitleAttribute).toLowerCase();
-        var hiddingMode = sub.isFilteringEnabled() || sub.isRestrictingEnabled();
-        if (hiddingMode) {
+        if (sub.isFilteringEnabled() || sub.isRestrictingEnabled()) {
             var restrictedOnKeywords = sub.getFilteringList(FilteringType.RestrictedOn);
             var filteredOutKeywords = sub.getFilteringList(FilteringType.FilteredOut);
             var hide = false;
@@ -331,14 +359,31 @@ var ArticleManager = (function () {
         else {
             article.css("display", "");
         }
+        var threshold = 6;
+        var publishAge = this.getPublishAge(article);
+        if (publishAge > threshold) {
+            if (this.minReadArticleAge == -1 || publishAge < this.minReadArticleAge) {
+                this.minReadArticleAge = publishAge;
+                this.lastReadArticle = article;
+                console.log("new min age title: " + title);
+            }
+        }
+        else {
+        }
         this.articlesCount++;
+        this.checkLastAddedArticle(sub);
+    };
+    ArticleManager.prototype.checkLastAddedArticle = function (sub) {
         if (this.articlesCount == this.getCurrentUnreadCount()) {
             if (sub.isSortingEnabled()) {
                 this.sortArticles();
             }
-            if (hiddingMode) {
-                $(ext.unreadCountSelector).append("<span class=" + this.hiddingInfoClass + ">(hidden: " + this.hiddenCount + ")</span>");
+            $(ext.unreadCountSelector).append("<span class=" + this.hiddingInfoClass + ">(hidden: " + this.hiddenCount + ")</span>");
+            var lastReadEntryId = null;
+            if (this.lastReadArticle != null) {
+                lastReadEntryId = $(this.lastReadArticle).attr(ext.articleEntryIdAttribute);
             }
+            window["eval"]("window." + ext.lastReadEntryId + " = '" + lastReadEntryId + "';");
         }
     };
     ArticleManager.prototype.sortArticles = function () {
@@ -384,15 +429,55 @@ var ArticleManager = (function () {
         }
         return popularityNumber;
     };
+    ArticleManager.prototype.getPublishAge = function (article) {
+        var ageStr = article.find(ext.publishAgeSelector).text().trim();
+        var age = 1;
+        if (ageStr.indexOf("h") > -1) {
+            ageStr = ageStr.replace("h", "");
+            age = Number(ageStr);
+        }
+        else if (ageStr.indexOf("d") > -1) {
+            ageStr = ageStr.replace("d", "");
+            age = Number(ageStr);
+            age *= 24;
+        }
+        return age;
+    };
+    ArticleManager.prototype.overrideMarkAsRead = function () {
+        function getLastReadEntryId() {
+            return window[ext.lastReadEntryId];
+        }
+        var feedlyListPagePrototype = window["devhd"].pkg("pages").ListPage.prototype;
+        var oldMarkAllAsRead = feedlyListPagePrototype.markAllSubscriptionEntriesAsRead;
+        feedlyListPagePrototype.markAllSubscriptionEntriesAsRead = function (subURL, b, lastEntryObject, d) {
+            console.log("oldMarkAllAsRead: " + oldMarkAllAsRead);
+            console.log("subURL: " + subURL);
+            console.log("lastEntryObject: " + JSON.stringify(lastEntryObject));
+            console.log("lastReadEntryId: " + lastEntryObject["lastReadEntryId"]);
+            lastEntryObject.lastReadEntryId = getLastReadEntryId();
+            console.log("new lastReadEntryId: " + lastEntryObject["lastReadEntryId"]);
+            // oldMarkAllAsRead.call(this, subURL, b, lastEntryObject, d);
+        };
+        var oldMarkCategoryAsRead = feedlyListPagePrototype.markCategoryAsRead;
+        feedlyListPagePrototype.markCategoryAsRead = function (categoryName, lastEntryObject, c, d) {
+            console.log("oldMarkCategoryAsRead: " + oldMarkCategoryAsRead);
+            console.log("categoryName: " + categoryName);
+            console.log("lastEntryObject: " + JSON.stringify(lastEntryObject));
+            console.log("lastReadEntryId: " + lastEntryObject["lastReadEntryId"]);
+            lastEntryObject.lastReadEntryId = getLastReadEntryId();
+            console.log("new lastReadEntryId: " + lastEntryObject["lastReadEntryId"]);
+            // oldMarkCategoryAsRead.call(this, categoryName, lastEntryObject, c, d);
+        };
+    };
     return ArticleManager;
 }());
 
 var templates = {
-    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <div class='FFnS_settings'> <span class='FFnS_settings_header'>General settings: </span> <span class='FFnS_settings_span tooltip'> Auto load all unread articles <span class='tooltiptext'>Not applied if there are no unread articles</span> </span> <input id='FFnS_autoLoadAllArticles' type='checkbox'> <span class='FFnS_settings_span tooltip'> Always use global settings <span class='tooltiptext'>Use the same filtering and sorting settings for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span> </span> <input id='FFnS_globalSettingsEnabled' type='checkbox'> </div> <div class='FFnS_settings'> <span id='FFnS_subscription_title' class='FFnS_settings_header'></span> <span> <span class='FFnS_settings_span tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_enableFiltering' type='checkbox'> </span> <span> <span class='FFnS_settings_span tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_enableRestricting' type='checkbox'> </span> <span> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_sortingEnabled' type='checkbox'> <select id='FFnS_sortingType'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li class=''> <a href='#FFnS_tab_ImportMenu'>Import settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span class='FFnS_settings_span'>Import settings from url: </span> <select id='FFnS_ImportMenu_SubscriptionSelect'> {{ImportMenu.SubscriptionOptions}} </select> <div><button id='FFnS_ImportMenu_Submit'>Import</button></div> </div> </div> </div> </div> </div>",
+    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <div class='FFnS_settings'> <span class='FFnS_settings_header'>General settings: </span> <span class='FFnS_settings_span tooltip'> Auto load all unread articles <span class='tooltiptext'>Not applied if there are no unread articles</span> </span> <input id='FFnS_autoLoadAllArticles' type='checkbox'> <span class='FFnS_settings_span tooltip'> Always use global settings <span class='tooltiptext'>Use the same filtering and sorting settings for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span> </span> <input id='FFnS_globalSettingsEnabled' type='checkbox'> </div> <div class='FFnS_settings'> <span id='FFnS_subscription_title' class='FFnS_settings_header'></span> <span> <span class='FFnS_settings_span tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_FilteringEnabled' type='checkbox'> </span> <span> <span class='FFnS_settings_span tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_RestrictingEnabled' type='checkbox'> </span> <span> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_SortingEnabled' type='checkbox'> <select id='FFnS_SortingType' class='FFnS_input'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li class=''> <a href='#FFnS_tab_AdvancedControls'>Advanced controls</a> </li> <li class=''> <a href='#FFnS_tab_ImportMenu'>Import settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_AdvancedControls' class='FFnS_Tab_Menu'> <div id='FFnS_MaxPeriod_Infos'> <span class='FFnS_settings_span'>Articles with a receive time period less than</span> <input id='FFnS_AdvancedPeriod_hours' class='FFnS_input' type='number' min='0'> <span class='FFnS_settings_span'>hours and</span> <input id='FFnS_AdvancedPeriod_days' class='FFnS_input' type='number' min='0'> <span class='FFnS_settings_span'>days</span> <span class='FFnS_settings_span'>should be:</span> </div> <span>Kept unread</span> <input id='FFnS_AdvancedPeriod_keepUnread' type='checkbox'> <span>Hidden</span> <input id='FFnS_AdvancedPeriod_hide' type='checkbox'> <span>Visible if hot (highlighted popularity)</span> <input id='FFnS_AdvancedPeriod_showIfHot' type='checkbox'> <span>Visible if popularity is superior to:</span> <input id='FFnS_AdvancedPeriod_minPopularity' class='FFnS_input' type='number' min='0'> </div> <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span class='FFnS_settings_span'>Import settings from url: </span> <select id='FFnS_ImportMenu_SubscriptionSelect' class='FFnS_input'> {{ImportMenu.SubscriptionOptions}} </select> <div><button id='FFnS_ImportMenu_Submit'>Import</button></div> </div> </div> </div> </div> </div>",
     "filteringListHTML": "<div id='{{FilteringTypeTabId}}' class='FFnS_Tab_Menu'> <input id='{{inputId}}' class='FFnS_input' size='10' type='text'> <span id='{{plusBtnId}}'> <img src='{{plusIconLink}}' class='FFnS_icon' /> </span> <span id='{{filetringKeywordsId}}'></span> <span id='{{eraseBtnId}}'> <img src='{{eraseIconLink}}' class='FFnS_icon' /> </span> </div>",
     "filteringKeywordHTML": "<button id='{{keywordId}}' type='button' class='FFnS_keyword'>{{keyword}}</button>",
     "optionHTML": "<option value='{{value}}'>{{value}}</option>",
-    "styleCSS": "#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 400px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } .FFnS_settings + .FFnS_settings { margin-top: 1%; } .FFnS_settings > :not(input):not(:first-child) { margin-left: 2%; } .FFnS_settings_header { color: #333690; } .FFnS_settings span + input { vertical-align: middle; } .FFnS_settings select { margin-left: 2% } #FFnS_sortingType { font-size:12px; vertical-align: middle; } #FFnS_tabs_menu { height: 30px; clear: both; margin-top: 1%; margin-bottom: 0%; padding: 0px; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_Tab_Menu { display: none; width: 100%; max-height: 340px; overflow-y: auto; overflow-x: hidden; } .FFnS_settings_span { display: inline; vertical-align: middle; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } .FFnS_input { vertical-align: middle; } .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; } .tooltip .tooltiptext { visibility: hidden; width: 120px; background-color: black; color: #fff; text-align: center; padding: 5px; border-radius: 6px; position: absolute; z-index: 1; } .tooltip:hover .tooltiptext { visibility: visible; } #FFnS_CloseSettingsBtn { float:right; width: 24px; height: 24px; } #FFnS_ImportMenu_Submit { margin-top: 1%; }"
+    "styleCSS": "#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 400px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } .FFnS_settings + .FFnS_settings { margin-top: 1%; } .FFnS_settings > :not(input):not(:first-child), #FFnS_tab_AdvancedControls > :not(input):not(:first-child) { margin-left: 2%; } .FFnS_settings_header { color: #333690; } .FFnS_settings span + input { vertical-align: middle; } .FFnS_settings select { margin-left: 2% } .FFnS_input { font-size:12px; vertical-align: middle; } #FFnS_tabs_menu { height: 30px; clear: both; margin-top: 1%; margin-bottom: 0%; padding: 0px; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_Tab_Menu { display: none; width: 100%; max-height: 340px; overflow-y: auto; overflow-x: hidden; } .FFnS_settings_span { display: inline; vertical-align: middle; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; } .tooltip .tooltiptext { visibility: hidden; width: 120px; background-color: black; color: #fff; text-align: center; padding: 5px; border-radius: 6px; position: absolute; z-index: 1; } .tooltip:hover .tooltiptext { visibility: visible; } #FFnS_CloseSettingsBtn { float:right; width: 24px; height: 24px; } #FFnS_ImportMenu_Submit { margin-top: 1%; } #FFnS_MaxPeriod_Infos > input[type=number]{ width: 5%; margin-left: 1%; margin-right: 1%; } #FFnS_AdvancedPeriod_minPopularity { width: 6%; } #FFnS_MaxPeriod_Infos { margin: 1% 0 2% 0; }"
 };
 
 var UIManager = (function () {
@@ -400,21 +485,35 @@ var UIManager = (function () {
         this.containsReadArticles = false;
         this.keywordToId = {};
         this.idCount = 1;
+        this.htmlSettingsElements = [
+            { type: HTMLElementType.SelectBox, ids: ["SortingType"] },
+            { type: HTMLElementType.CheckBox, ids: ["FilteringEnabled", "RestrictingEnabled", "SortingEnabled"] }
+        ];
         this.settingsDivContainerId = this.getHTMLId("settingsDivContainer");
         this.closeBtnId = this.getHTMLId("CloseSettingsBtn");
-        this.enableFilteringCheckId = this.getHTMLId("enableFiltering");
-        this.enableRestrictingCheckId = this.getHTMLId("enableRestricting");
-        this.sortingTypeId = this.getHTMLId("sortingType");
-        this.sortingEnabledId = this.getHTMLId("sortingEnabled");
+        this.advancedPeriodHoursId = this.getHTMLId("AdvancedPeriod_hours");
+        this.advancedPeriodDaysId = this.getHTMLId("AdvancedPeriod_days");
+        this.keepUnreadId = this.getHTMLId("AdvancedPeriod_keepUnread");
+        this.advancedPeriodHideId = this.getHTMLId("AdvancedPeriod_hide");
+        this.showIfHotId = this.getHTMLId("AdvancedPeriod_showIfHot");
+        this.minPopularityId = this.getHTMLId("AdvancedPeriod_minPopularity");
     }
     UIManager.prototype.init = function () {
+        var _this = this;
         this.subscriptionManager = new SubscriptionManager();
         this.articleManager = new ArticleManager(this.subscriptionManager);
-        this.autoLoadAllArticlesCB = new CheckBox("autoLoadAllArticles", this, false);
-        this.globalSettingsEnabledCB = new CheckBox("globalSettingsEnabled", this);
+        this.autoLoadAllArticlesCB = new GlobalSettingsCheckBox("autoLoadAllArticles", this, false);
+        this.globalSettingsEnabledCB = new GlobalSettingsCheckBox("globalSettingsEnabled", this);
         this.initUI();
+        this.htmlSubscriptionManager = new HTMLSubscriptionManager(this);
+        this.htmlSettingsElements.forEach(function (element) {
+            _this.htmlSubscriptionManager.registerSettings(element.ids, element.type);
+        });
         this.updatePage();
-        this.initSettingsEvents();
+        this.initSettingsCallbacks();
+        //var evalFunc = window["eval"];
+        //evalFunc("(" + this.articleManager.overrideMarkAsRead.toString() + ")();");
+        //evalFunc("window.ext = (" + JSON.stringify(ext).replace(/\s+/g, ' ') + ");");
     };
     UIManager.prototype.updatePage = function () {
         this.resetPage();
@@ -446,10 +545,8 @@ var UIManager = (function () {
         this.updateImportOptionsHTML();
     };
     UIManager.prototype.updateSubscriptionSettings = function () {
-        this.setChecked(this.enableFilteringCheckId, this.subscription.isFilteringEnabled());
-        this.setChecked(this.enableRestrictingCheckId, this.subscription.isRestrictingEnabled());
-        this.setChecked(this.sortingEnabledId, this.subscription.isSortingEnabled());
-        $id(this.sortingTypeId).val(this.subscription.getSortingType());
+        this.htmlSubscriptionManager.update();
+        this.updateAdvancedControlsReceivedPeriodSettings();
     };
     UIManager.prototype.updateSubscriptionTitle = function (globalSettingsEnabled) {
         var title = globalSettingsEnabled ? "Global" : "Subscription";
@@ -526,27 +623,17 @@ var UIManager = (function () {
             });
         });
     };
-    UIManager.prototype.initSettingsEvents = function () {
+    UIManager.prototype.initSettingsCallbacks = function () {
         var _this = this;
         var this_ = this;
-        // Checkbox & select boxes events
-        $id(this.enableFilteringCheckId).change(function () {
-            this_.subscription.setFilteringEnabled(this_.isChecked($(this)));
-            this_.refreshFilteringAndSorting();
-        });
-        $id(this.enableRestrictingCheckId).change(function () {
-            this_.subscription.setRestrictingEnabled(this_.isChecked($(this)));
-            this_.refreshFilteringAndSorting();
-        });
-        $id(this.sortingEnabledId).change(function () {
-            this_.subscription.setSortingEnabled(this_.isChecked($(this)));
-            this_.refreshFilteringAndSorting();
-        });
-        var sortingTypeSelect = $id(this.sortingTypeId);
-        sortingTypeSelect.change(function () {
-            this_.subscription.setSortingType(sortingTypeSelect.val());
-            this_.refreshFilteringAndSorting();
-        });
+        this.htmlSubscriptionManager.init();
+        function updateAdvancedControlsReceivedPeriodCallback() {
+            this_.updateAdvancedControlsReceivedPeriod();
+        }
+        $id(this.keepUnreadId).change(updateAdvancedControlsReceivedPeriodCallback);
+        $id(this.advancedPeriodHideId).change(updateAdvancedControlsReceivedPeriodCallback);
+        $id(this.showIfHotId).change(updateAdvancedControlsReceivedPeriodCallback);
+        $id(this.minPopularityId).change(updateAdvancedControlsReceivedPeriodCallback);
         $id(this.closeBtnId).click(function () {
             $id(this_.settingsDivContainerId).toggle();
         });
@@ -554,6 +641,35 @@ var UIManager = (function () {
             _this.importKeywords();
         });
         this.setUpFilteringListEvents();
+    };
+    UIManager.prototype.updateAdvancedControlsReceivedPeriod = function () {
+        var advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
+        advancedControlsReceivedPeriod.keepUnread = this.isChecked($id(this.keepUnreadId));
+        advancedControlsReceivedPeriod.hide = this.isChecked($id(this.advancedPeriodHideId));
+        advancedControlsReceivedPeriod.showIfHot = this.isChecked($id(this.showIfHotId));
+        advancedControlsReceivedPeriod.minPopularity = Number($id(this.minPopularityId).val());
+        var advancedPeriodHours = Number($id(this.advancedPeriodHoursId).val());
+        var advancedPeriodDays = Number($id(this.advancedPeriodDaysId).val());
+        advancedControlsReceivedPeriod.maxHours = advancedPeriodHours + 24 * advancedPeriodDays;
+        this.subscription.setAdvancedControlsReceivedPeriod(advancedControlsReceivedPeriod);
+    };
+    UIManager.prototype.updateAdvancedControlsReceivedPeriodSettings = function () {
+        var advancedControlsReceivedPeriod = this.subscription.getAdvancedControlsReceivedPeriod();
+        if (advancedControlsReceivedPeriod == null) {
+            advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
+        }
+        var maxHours = advancedControlsReceivedPeriod.maxHours;
+        this.setChecked(this.keepUnreadId, advancedControlsReceivedPeriod.keepUnread);
+        this.setChecked(this.advancedPeriodHideId, advancedControlsReceivedPeriod.hide);
+        this.setChecked(this.showIfHotId, advancedControlsReceivedPeriod.showIfHot);
+        $id(this.minPopularityId).val(advancedControlsReceivedPeriod.minPopularity);
+        var advancedPeriodHours = Math.floor(advancedControlsReceivedPeriod.maxHours / 24);
+        var advancedPeriodDays = maxHours % 24;
+        $id(this.advancedPeriodHoursId).val(advancedPeriodHours);
+        $id(this.advancedPeriodDaysId).val(advancedPeriodDays);
+        $id(this.minPopularityId)[0].oninput = this.updateAdvancedControlsReceivedPeriod;
+        $id(this.advancedPeriodHoursId)[0].oninput = this.updateAdvancedControlsReceivedPeriod;
+        $id(this.advancedPeriodDaysId)[0].oninput = this.updateAdvancedControlsReceivedPeriod;
     };
     UIManager.prototype.setUpFilteringListEvents = function () {
         getFilteringTypes().forEach(this.setUpFilteringListManagementEvents, this);
@@ -575,7 +691,7 @@ var UIManager = (function () {
         // Erase all button
         $id(this.getHTMLId(ids.eraseBtnId)).click(function () {
             if (confirm("Erase all the keywords of this list ?")) {
-                _this.subscription.reset(type);
+                _this.subscription.resetFilteringList(type);
                 _this.updateFilteringList(type);
             }
         });
@@ -689,8 +805,90 @@ var UIManager = (function () {
     return UIManager;
 }());
 
-var CheckBox = (function () {
-    function CheckBox(id, uiManager, fullRefreshOnChange) {
+var HTMLSubscriptionManager = (function () {
+    function HTMLSubscriptionManager(manager) {
+        var _this = this;
+        this.subscriptionSettings = [];
+        this.configByElementType = {};
+        this.manager = manager;
+        this.configByElementType[HTMLElementType.SelectBox] = {
+            changeFunction: "change",
+            getHTMLValue: function (subscriptionSetting) {
+                return $id(subscriptionSetting.htmlId).val();
+            },
+            update: function (subscriptionSetting) {
+                var value = _this.manager.subscription["get" + subscriptionSetting.id]();
+                $id(subscriptionSetting.htmlId).val(value);
+            }
+        };
+        this.configByElementType[HTMLElementType.CheckBox] = {
+            changeFunction: "change",
+            getHTMLValue: function (subscriptionSetting) {
+                return _this.manager.isChecked($id(subscriptionSetting.htmlId));
+            },
+            update: function (subscriptionSetting) {
+                var value = _this.manager.subscription["is" + subscriptionSetting.id]();
+                _this.manager.setChecked(subscriptionSetting.htmlId, value);
+            }
+        };
+    }
+    HTMLSubscriptionManager.prototype.registerSettings = function (ids, type, refreshFilteringAndSorting) {
+        this.addSettings(ids, this.configByElementType[type], refreshFilteringAndSorting);
+    };
+    HTMLSubscriptionManager.prototype.addSettings = function (ids, config, refreshFilteringAndSorting) {
+        var _this = this;
+        ids.forEach(function (id) {
+            var setting = new HTMLSubscriptionSetting(_this.manager, id, config, refreshFilteringAndSorting);
+            _this.subscriptionSettings.push(setting);
+        });
+    };
+    HTMLSubscriptionManager.prototype.init = function () {
+        this.subscriptionSettings.forEach(function (subscriptionSetting) {
+            subscriptionSetting.init();
+        });
+    };
+    HTMLSubscriptionManager.prototype.update = function () {
+        this.subscriptionSettings.forEach(function (subscriptionSetting) {
+            subscriptionSetting.update();
+        });
+    };
+    return HTMLSubscriptionManager;
+}());
+var HTMLSubscriptionSetting = (function () {
+    function HTMLSubscriptionSetting(manager, id, config, refreshFilteringAndSorting, subscriptionSettingConfig) {
+        this.manager = manager;
+        this.id = id;
+        this.htmlId = manager.getHTMLId(id);
+        this.refreshFilteringAndSorting = refreshFilteringAndSorting == null ? true : refreshFilteringAndSorting;
+        var getHTMLValue = config.getHTMLValue;
+        var update = config.update;
+        if (subscriptionSettingConfig != null) {
+            getHTMLValue = subscriptionSettingConfig.getHTMLValue;
+            update = subscriptionSettingConfig.update;
+        }
+        this.config = {
+            changeFunction: config.changeFunction,
+            getHTMLValue: getHTMLValue,
+            update: update
+        };
+    }
+    HTMLSubscriptionSetting.prototype.init = function () {
+        var self = this;
+        $id(this.htmlId)[this.config.changeFunction](function () {
+            self.manager.subscription["set" + self.id](self.config.getHTMLValue(self));
+            if (self.refreshFilteringAndSorting) {
+                self.manager.refreshFilteringAndSorting();
+            }
+        });
+    };
+    HTMLSubscriptionSetting.prototype.update = function () {
+        this.config.update(this);
+    };
+    return HTMLSubscriptionSetting;
+}());
+
+var GlobalSettingsCheckBox = (function () {
+    function GlobalSettingsCheckBox(id, uiManager, fullRefreshOnChange) {
         this.fullRefreshOnChange = true;
         this.id = id;
         this.uiManager = uiManager;
@@ -698,15 +896,15 @@ var CheckBox = (function () {
         this.enabled = LocalPersistence.get(this.id, true);
         this.uiManager.setChecked(this.htmlId, this.enabled);
     }
-    CheckBox.prototype.isEnabled = function () {
+    GlobalSettingsCheckBox.prototype.isEnabled = function () {
         return this.enabled;
     };
-    CheckBox.prototype.setEnabled = function (enabled) {
+    GlobalSettingsCheckBox.prototype.setEnabled = function (enabled) {
         LocalPersistence.put(this.id, enabled);
         this.enabled = enabled;
         this.refreshUI();
     };
-    CheckBox.prototype.initUI = function () {
+    GlobalSettingsCheckBox.prototype.initUI = function () {
         var this_ = this;
         $id(this.htmlId).click(function () {
             this_.setEnabled(this_.uiManager.isChecked($(this)));
@@ -714,10 +912,10 @@ var CheckBox = (function () {
         });
         this.refreshUI();
     };
-    CheckBox.prototype.refreshUI = function () {
+    GlobalSettingsCheckBox.prototype.refreshUI = function () {
         this.uiManager.setChecked(this.htmlId, this.enabled);
     };
-    return CheckBox;
+    return GlobalSettingsCheckBox;
 }());
 
 $(document).ready(function () {

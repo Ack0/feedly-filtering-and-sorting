@@ -25,7 +25,7 @@
 	margin-top: 1%;
 }
 
-.FFnS_settings > :not(input):not(:first-child) {
+.FFnS_settings > :not(input):not(:first-child), #FFnS_tab_AdvancedControls > :not(input):not(:first-child) {
 	margin-left: 2%;
 }
 
@@ -41,7 +41,7 @@
 	margin-left: 2% 
 }
 
-#FFnS_sortingType {
+.FFnS_input {
 	font-size:12px;
 	vertical-align: middle;
 }
@@ -95,9 +95,6 @@
     color: #FFF;
     cursor: pointer;
 }
-.FFnS_input {
-    vertical-align: middle;
-}
 
 .tooltip {
     position: relative;
@@ -129,4 +126,18 @@
 
 #FFnS_ImportMenu_Submit {
 	margin-top: 1%;
+}
+
+#FFnS_MaxPeriod_Infos > input[type=number]{
+    width: 5%;
+	margin-left: 1%;
+	margin-right: 1%;
+}
+
+#FFnS_AdvancedPeriod_minPopularity {
+	width: 6%;
+}
+
+#FFnS_MaxPeriod_Infos {
+	margin: 1% 0 2% 0;
 }

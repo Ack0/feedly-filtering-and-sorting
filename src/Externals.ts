@@ -9,10 +9,15 @@ var ext = {
 	"settingsBtnPredecessorSelector": "#pageActionCustomize, #floatingPageActionCustomize",
 	"articleSelector": "#section0_column0 > div",
 	"articleLinkSelector": "a[id$=\"_main_title\"]",
+	"publishAgeSelector": ".lastModified",
+	"publishAgeTimestampAttr": "title",
+	"publishAgeTimestampPattern": "title",
 	"readArticleClass": "read",
 	"subscriptionChangeSelector": "h1#feedlyTitleBar > .hhint",
 	"articleTitleAttribute": "data-title",
+	"articleEntryIdAttribute": "data-inlineentryid",
 	"popularitySelector": ".nbrRecommendations",
 	"unreadCountSelector" : ".hhint > [class*='UnreadCount']",
-	"fullyLoadedArticlesSelector" : "#fullyLoadedFollowing" 
+	"fullyLoadedArticlesSelector" : "#fullyLoadedFollowing",
+    "lastReadEntryId" : "FFnS_last_Read_Entry_Id"
 }

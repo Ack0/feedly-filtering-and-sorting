@@ -12,6 +12,10 @@ export enum FilteringType {
     FilteredOut
 }
 
+export enum HTMLElementType {
+    SelectBox, CheckBox
+}
+
 export function getFilteringTypes(): FilteringType[] {
     return [FilteringType.FilteredOut, FilteringType.RestrictedOn];
 }

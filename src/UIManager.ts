@@ -1,38 +1,58 @@
 /// <reference path="./_references.d.ts" />
 
-import {FilteringType, SortingType, getFilteringTypes, getFilteringTypeId} from "./DataTypes";
+import {FilteringType, SortingType, HTMLElementType, getFilteringTypes, getFilteringTypeId} from "./DataTypes";
 import {Subscription} from "./Subscription";
+import {AdvancedControlsReceivedPeriod} from "./SubscriptionDTO";
 import {ArticleManager} from "./ArticleManager";
 import {SubscriptionManager} from "./SubscriptionManager";
-import {CheckBox} from "./CheckBox";
+import {GlobalSettingsCheckBox} from "./HTMLGlobalSettings";
+import {HTMLSubscriptionManager} from "./HTMLSubscription";
 import {$id, bindMarkup} from "./Utils";
 
 export class UIManager {
     subscriptionManager: SubscriptionManager;
+    htmlSubscriptionManager: HTMLSubscriptionManager;
     articleManager: ArticleManager;
     subscription: Subscription;
-    autoLoadAllArticlesCB: CheckBox;
-    globalSettingsEnabledCB: CheckBox;
+    autoLoadAllArticlesCB: GlobalSettingsCheckBox;
+    globalSettingsEnabledCB: GlobalSettingsCheckBox;
     containsReadArticles = false;
 
     keywordToId = {};
     idCount = 1;
 
+    htmlSettingsElements = [
+        {type: HTMLElementType.SelectBox, ids: ["SortingType"]},
+        {type: HTMLElementType.CheckBox, ids: ["FilteringEnabled", "RestrictingEnabled", "SortingEnabled"]}
+    ];
+
     settingsDivContainerId = this.getHTMLId("settingsDivContainer");
     closeBtnId = this.getHTMLId("CloseSettingsBtn");
-    enableFilteringCheckId = this.getHTMLId("enableFiltering");
-    enableRestrictingCheckId = this.getHTMLId("enableRestricting");
-    sortingTypeId = this.getHTMLId("sortingType");
-    sortingEnabledId = this.getHTMLId("sortingEnabled");
-
+    advancedPeriodHoursId = this.getHTMLId("AdvancedPeriod_hours");
+    advancedPeriodDaysId = this.getHTMLId("AdvancedPeriod_days");
+    keepUnreadId = this.getHTMLId("AdvancedPeriod_keepUnread");
+    advancedPeriodHideId = this.getHTMLId("AdvancedPeriod_hide");
+    showIfHotId = this.getHTMLId("AdvancedPeriod_showIfHot");
+    minPopularityId = this.getHTMLId("AdvancedPeriod_minPopularity");
+    
     init() {
         this.subscriptionManager = new SubscriptionManager();
         this.articleManager = new ArticleManager(this.subscriptionManager);
-        this.autoLoadAllArticlesCB = new CheckBox("autoLoadAllArticles", this, false);
-        this.globalSettingsEnabledCB = new CheckBox("globalSettingsEnabled", this);
+        this.autoLoadAllArticlesCB = new GlobalSettingsCheckBox("autoLoadAllArticles", this, false);
+        this.globalSettingsEnabledCB = new GlobalSettingsCheckBox("globalSettingsEnabled", this);
         this.initUI();
+
+        this.htmlSubscriptionManager = new HTMLSubscriptionManager(this);
+        this.htmlSettingsElements.forEach(element => {
+            this.htmlSubscriptionManager.registerSettings(element.ids, element.type);
+        });
+
         this.updatePage();
-        this.initSettingsEvents();
+        this.initSettingsCallbacks();
+
+        //var evalFunc = window["eval"];
+        //evalFunc("(" + this.articleManager.overrideMarkAsRead.toString() + ")();");
+        //evalFunc("window.ext = (" + JSON.stringify(ext).replace(/\s+/g, ' ') + ");");
     }
 
     updatePage() {
@@ -70,10 +90,8 @@ export class UIManager {
     }
 
     updateSubscriptionSettings() {
-        this.setChecked(this.enableFilteringCheckId, this.subscription.isFilteringEnabled());
-        this.setChecked(this.enableRestrictingCheckId, this.subscription.isRestrictingEnabled());
-        this.setChecked(this.sortingEnabledId, this.subscription.isSortingEnabled());
-        $id(this.sortingTypeId).val(this.subscription.getSortingType());
+        this.htmlSubscriptionManager.update();
+        this.updateAdvancedControlsReceivedPeriodSettings();
     }
 
     updateSubscriptionTitle(globalSettingsEnabled: boolean) {
@@ -161,27 +179,18 @@ export class UIManager {
         });
     }
 
-    initSettingsEvents() {
+    initSettingsCallbacks() {
         var this_ = this;
 
-        // Checkbox & select boxes events
-        $id(this.enableFilteringCheckId).change(function () {
-            this_.subscription.setFilteringEnabled(this_.isChecked($(this)));
-            this_.refreshFilteringAndSorting();
-        });
-        $id(this.enableRestrictingCheckId).change(function () {
-            this_.subscription.setRestrictingEnabled(this_.isChecked($(this)));
-            this_.refreshFilteringAndSorting();
-        });
-        $id(this.sortingEnabledId).change(function () {
-            this_.subscription.setSortingEnabled(this_.isChecked($(this)));
-            this_.refreshFilteringAndSorting();
-        });
-        var sortingTypeSelect = $id(this.sortingTypeId);
-        sortingTypeSelect.change(function () {
-            this_.subscription.setSortingType(sortingTypeSelect.val());
-            this_.refreshFilteringAndSorting();
-        });
+        this.htmlSubscriptionManager.init();
+        
+        function updateAdvancedControlsReceivedPeriodCallback() {
+            this_.updateAdvancedControlsReceivedPeriod();
+        }
+        $id(this.keepUnreadId).change(updateAdvancedControlsReceivedPeriodCallback);
+        $id(this.advancedPeriodHideId).change(updateAdvancedControlsReceivedPeriodCallback);
+        $id(this.showIfHotId).change(updateAdvancedControlsReceivedPeriodCallback);
+        $id(this.minPopularityId).change(updateAdvancedControlsReceivedPeriodCallback);
 
         $id(this.closeBtnId).click(function () {
             $id(this_.settingsDivContainerId).toggle();
@@ -192,6 +201,38 @@ export class UIManager {
         });
 
         this.setUpFilteringListEvents();
+    }
+
+    updateAdvancedControlsReceivedPeriod() {
+        var advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
+        advancedControlsReceivedPeriod.keepUnread = this.isChecked($id(this.keepUnreadId));
+        advancedControlsReceivedPeriod.hide = this.isChecked($id(this.advancedPeriodHideId));
+        advancedControlsReceivedPeriod.showIfHot = this.isChecked($id(this.showIfHotId));
+        advancedControlsReceivedPeriod.minPopularity = Number($id(this.minPopularityId).val());
+        var advancedPeriodHours = Number($id(this.advancedPeriodHoursId).val());
+        var advancedPeriodDays = Number($id(this.advancedPeriodDaysId).val());
+        advancedControlsReceivedPeriod.maxHours = advancedPeriodHours + 24 * advancedPeriodDays;
+        this.subscription.setAdvancedControlsReceivedPeriod(advancedControlsReceivedPeriod);
+    }
+
+    updateAdvancedControlsReceivedPeriodSettings() {
+        var advancedControlsReceivedPeriod = this.subscription.getAdvancedControlsReceivedPeriod();
+        if (advancedControlsReceivedPeriod == null) {
+            advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
+        }
+        var maxHours = advancedControlsReceivedPeriod.maxHours;
+        this.setChecked(this.keepUnreadId, advancedControlsReceivedPeriod.keepUnread);
+        this.setChecked(this.advancedPeriodHideId, advancedControlsReceivedPeriod.hide);
+        this.setChecked(this.showIfHotId, advancedControlsReceivedPeriod.showIfHot);
+        $id(this.minPopularityId).val(advancedControlsReceivedPeriod.minPopularity);
+        var advancedPeriodHours = Math.floor(advancedControlsReceivedPeriod.maxHours / 24);
+        var advancedPeriodDays = maxHours % 24;
+        $id(this.advancedPeriodHoursId).val(advancedPeriodHours);
+        $id(this.advancedPeriodDaysId).val(advancedPeriodDays);
+
+        $id(this.minPopularityId)[0].oninput = this.updateAdvancedControlsReceivedPeriod;
+        $id(this.advancedPeriodHoursId)[0].oninput = this.updateAdvancedControlsReceivedPeriod;
+        $id(this.advancedPeriodDaysId)[0].oninput = this.updateAdvancedControlsReceivedPeriod;
     }
 
     private setUpFilteringListEvents() {
@@ -216,7 +257,7 @@ export class UIManager {
         // Erase all button
         $id(this.getHTMLId(ids.eraseBtnId)).click(() => {
             if (confirm("Erase all the keywords of this list ?")) {
-                this.subscription.reset(type);
+                this.subscription.resetFilteringList(type);
                 this.updateFilteringList(type);
             }
         });

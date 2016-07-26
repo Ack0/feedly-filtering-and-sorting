@@ -21,19 +21,19 @@
                     Filtering enabled
                     <span class="tooltiptext">Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span>
                 </span>
-                <input id="FFnS_enableFiltering" type="checkbox">
+                <input id="FFnS_FilteringEnabled" type="checkbox">
             </span>
             <span>
                 <span class="FFnS_settings_span tooltip">
                     Restricting enabled
                     <span class="tooltiptext">Show only articles that contain at least one of the restricting keywords (not applied if empty)</span>
                 </span>
-                <input id="FFnS_enableRestricting" type="checkbox">
+                <input id="FFnS_RestrictingEnabled" type="checkbox">
             </span>
             <span>
                 <span class="FFnS_settings_span">Sorting enabled</span>
-                <input id="FFnS_sortingEnabled" type="checkbox">
-                <select id="FFnS_sortingType">
+                <input id="FFnS_SortingEnabled" type="checkbox">
+                <select  id="FFnS_SortingType" class="FFnS_input">
                     <option value="{{SortingType.PopularityDesc}}">Sort by popularity (highest to lowest)</option>
                     <option value="{{SortingType.TitleAsc}}">Sort by title (a -&gt; z)</option>
                     <option value="{{SortingType.PopularityAsc}}">Sort by popularity (lowest to highest)</option>
@@ -48,14 +48,36 @@
                     <a href="#FFnS_tab_RestrictedOn">Restricting keywords</a>
                 </li>
                 <li class="">
+                    <a href="#FFnS_tab_AdvancedControls">Advanced controls</a>
+                </li>
+                <li class="">
                     <a href="#FFnS_tab_ImportMenu">Import settings</a>
                 </li>
             </ul>
             <div id="FFnS_tabs_content">
-                {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}}
+                {{FilteringList.Type.FilteredOut}}
+                {{FilteringList.Type.RestrictedOn}}
+                <div id="FFnS_tab_AdvancedControls" class="FFnS_Tab_Menu">
+                    <div id="FFnS_MaxPeriod_Infos">
+                        <span class="FFnS_settings_span">Articles with a receive time period less than</span>
+                        <input id="FFnS_AdvancedPeriod_hours" class="FFnS_input" type="number" min="0">
+                        <span class="FFnS_settings_span">hours and</span>
+                        <input id="FFnS_AdvancedPeriod_days" class="FFnS_input" type="number" min="0">
+                        <span class="FFnS_settings_span">days</span>
+                        <span class="FFnS_settings_span">should be:</span>
+                    </div>
+                    <span>Kept unread</span>
+                    <input id="FFnS_AdvancedPeriod_keepUnread" type="checkbox">
+                    <span>Hidden</span>
+                    <input id="FFnS_AdvancedPeriod_hide" type="checkbox">
+                    <span>Visible if hot (highlighted popularity)</span>
+                    <input id="FFnS_AdvancedPeriod_showIfHot" type="checkbox">
+                    <span>Visible if popularity is superior to:</span>
+                    <input id="FFnS_AdvancedPeriod_minPopularity" class="FFnS_input" type="number" min="0">
+                </div>
                 <div id="FFnS_tab_ImportMenu" class="FFnS_Tab_Menu">
                     <span class="FFnS_settings_span">Import settings from url: </span>
-                    <select id="FFnS_ImportMenu_SubscriptionSelect">
+                    <select id="FFnS_ImportMenu_SubscriptionSelect" class="FFnS_input">
                         {{ImportMenu.SubscriptionOptions}}
                     </select>
                     <div><button id="FFnS_ImportMenu_Submit">Import</button></div>

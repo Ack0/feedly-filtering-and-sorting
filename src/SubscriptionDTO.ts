@@ -6,6 +6,7 @@ export class SubscriptionDTO {
     restrictingEnabled: boolean = false;
     sortingEnabled: boolean = true;
     sortingType: SortingType = SortingType.PopularityDesc;
+    advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
     filteringListsByType: { [key: number]: string[]; } = {};
     
     constructor(url: string) {
@@ -14,4 +15,12 @@ export class SubscriptionDTO {
             this.filteringListsByType[type] = [];
         });
     }
+}
+
+export class AdvancedControlsReceivedPeriod {
+    maxHours = 6;
+    keepUnread = false;
+    hide = false;
+    showIfHot = false;
+    minPopularity = 200;
 }

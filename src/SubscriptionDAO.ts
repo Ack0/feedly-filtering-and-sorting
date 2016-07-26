@@ -1,12 +1,13 @@
 
 import {FilteringType, SortingType, getFilteringTypes, getFilteringTypeId} from "./DataTypes";
 import {Subscription} from "./Subscription";
-import {SubscriptionDTO} from "./SubscriptionDTO";
+import {SubscriptionDTO, AdvancedControlsReceivedPeriod} from "./SubscriptionDTO";
 import {SubscriptionManager} from "./SubscriptionManager";
 import {LocalPersistence} from "./LocalPersistence";
 
 export class SubscriptionDAO {
     private SUBSCRIPTION_ID_PREFIX = "subscription_";
+    private GLOBAL_SETTINGS_SUBSCRIPTION_URL = "---global settings---";
     private defaultSubscription: SubscriptionDTO;
     
     save(dto: SubscriptionDTO) { 
@@ -38,14 +39,17 @@ export class SubscriptionDAO {
         clone.restrictingEnabled = dtoToClone.restrictingEnabled;
         clone.sortingEnabled = dtoToClone.sortingEnabled;
         clone.sortingType = dtoToClone.sortingType;
+        clone.advancedControlsReceivedPeriod = dtoToClone.advancedControlsReceivedPeriod != null ? dtoToClone.advancedControlsReceivedPeriod : new AdvancedControlsReceivedPeriod();
         getFilteringTypes().forEach((type) => {
             clone.filteringListsByType[type] = dtoToClone.filteringListsByType[type].slice(0);
         });
         return clone;
     }
 
-    setDefaultSubscription(defaultSubscription: Subscription) {
-        this.defaultSubscription = defaultSubscription.dto;
+    loadGlobalSettings() : Subscription {
+        var globalSettings = this.load(this.GLOBAL_SETTINGS_SUBSCRIPTION_URL);
+        this.defaultSubscription = globalSettings.dto;
+        return globalSettings;
     }
 
     getAllSubscriptionURLs() : string[] {

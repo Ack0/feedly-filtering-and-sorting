@@ -5,7 +5,6 @@ import {Subscription} from "./Subscription";
 import {SubscriptionDAO} from "./SubscriptionDAO";
 
 export class SubscriptionManager {
-    private GLOBAL_SETTINGS_SUBSCRIPTION_URL = "---global settings---";
     private currentSubscription : Subscription;
     private globalSettings : Subscription;
     private dao : SubscriptionDAO;
@@ -14,8 +13,7 @@ export class SubscriptionManager {
     
     constructor() {
         this.dao = new SubscriptionDAO();
-        this.loadGlobalSettings();
-        this.dao.setDefaultSubscription(this.globalSettings);
+        this.globalSettings = this.dao.loadGlobalSettings();
     }
     
     loadSubscription(globalSettingsEnabled: boolean) : Subscription {
@@ -28,11 +26,6 @@ export class SubscriptionManager {
             subscription = this.dao.load(url);
         }
         return this.currentSubscription = subscription; 
-    }
-    
-    loadGlobalSettings() : Subscription {
-        this.globalSettings = this.dao.load(this.GLOBAL_SETTINGS_SUBSCRIPTION_URL);
-        return this.globalSettings;
     }
     
     importKeywords(url: string) {

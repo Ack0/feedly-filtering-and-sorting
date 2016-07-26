@@ -4,7 +4,7 @@ import {LocalPersistence} from "./LocalPersistence";
 import {UIManager} from "./UIManager"
 import {$id} from "./Utils";
 
-export class CheckBox {
+export class GlobalSettingsCheckBox {
     id: string;
     htmlId: string;
     uiManager: UIManager;

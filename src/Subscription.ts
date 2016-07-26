@@ -1,6 +1,6 @@
 /// <reference path="./_references.d.ts" />
 
-import {SubscriptionDTO} from "./SubscriptionDTO";
+import {SubscriptionDTO, AdvancedControlsReceivedPeriod} from "./SubscriptionDTO";
 import {SubscriptionDAO} from "./SubscriptionDAO";
 import {FilteringType, SortingType, getFilteringTypes} from "./DataTypes";
 
@@ -60,6 +60,15 @@ export class Subscription {
         this.dao.save(this.dto);
     }
     
+    getAdvancedControlsReceivedPeriod(): AdvancedControlsReceivedPeriod {
+        return this.dto.advancedControlsReceivedPeriod;
+    }
+    
+    setAdvancedControlsReceivedPeriod(advancedControlsReceivedPeriod: AdvancedControlsReceivedPeriod) {
+        this.dto.advancedControlsReceivedPeriod = advancedControlsReceivedPeriod;
+        this.dao.save(this.dto);
+    }
+    
     getSortingType(): SortingType {
         return this.dto.sortingType;
     }
@@ -87,7 +96,7 @@ export class Subscription {
         this.dao.save(this.dto);
     }
     
-    reset(type: FilteringType) {
+    resetFilteringList(type: FilteringType) {
         this.getFilteringList(type).length = 0;
         this.dao.save(this.dto);
     }

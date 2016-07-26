@@ -10,9 +10,10 @@
     ],
     "files": [
         "src/ArticleManager.ts",
-        "src/CheckBox.ts",
         "src/DataTypes.ts",
         "src/Externals.ts",
+        "src/HTMLGlobalSettings.ts",
+        "src/HTMLSubscription.ts",
         "src/LocalPersistence.ts",
         "src/Main.ts",
         "src/Subscription.ts",
