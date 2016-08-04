@@ -13,7 +13,7 @@ export enum FilteringType {
 }
 
 export enum HTMLElementType {
-    SelectBox, CheckBox
+    SelectBox, CheckBox, NumberInput
 }
 
 export function getFilteringTypes(): FilteringType[] {

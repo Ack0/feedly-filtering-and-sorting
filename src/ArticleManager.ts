@@ -78,7 +78,7 @@ export class ArticleManager {
             if (this.minReadArticleAge == -1 || publishAge < this.minReadArticleAge) {
                 this.minReadArticleAge = publishAge;
                 this.lastReadArticle = article;
-                console.log("new min age title: " + title);
+                // console.log("new min age title: " + title);
             }
         } else {
             // article.css("display", "none");

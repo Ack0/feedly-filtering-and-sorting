@@ -5,23 +5,31 @@ import {HTMLElementType} from "./DataTypes"
 import {$id} from "./Utils";
 
 export interface HTMLSubscriptionSettingConfig {
-    getHTMLValue: (subscriptionSetting: HTMLSubscriptionSetting) => any;
     update: (subscriptionSetting: HTMLSubscriptionSetting) => void;
-}
-
-interface HTMLSettingConfig extends HTMLSubscriptionSettingConfig {
-    changeFunction: string;
+    setUpChangeCallback?: (subscriptionSetting: HTMLSubscriptionSetting) => void;
+    getHTMLValue?: (subscriptionSetting: HTMLSubscriptionSetting) => Object;
 }
 
 export class HTMLSubscriptionManager {
     subscriptionSettings: HTMLSubscriptionSetting[] = [];
     manager: UIManager;
-    configByElementType: { [key: number]: HTMLSettingConfig; } = {};
+    configByElementType: { [key: number]: HTMLSubscriptionSettingConfig; } = {};
+
+    getChangeCallback(setting: HTMLSubscriptionSetting): Function {
+        return function () {
+            setting.manager.subscription["set" + setting.id](setting.config.getHTMLValue(setting));
+            if (setting.refreshFilteringAndSorting) {
+                setting.manager.refreshFilteringAndSorting();
+            }
+        }
+    }
 
     constructor(manager: UIManager) {
         this.manager = manager;
         this.configByElementType[HTMLElementType.SelectBox] = {
-            changeFunction: "change",
+            setUpChangeCallback: (subscriptionSetting) => {
+                $id(subscriptionSetting.htmlId).change(this.getChangeCallback(subscriptionSetting));
+            },
             getHTMLValue: (subscriptionSetting) => {
                 return $id(subscriptionSetting.htmlId).val();
             },
@@ -31,7 +39,9 @@ export class HTMLSubscriptionManager {
             }
         };
         this.configByElementType[HTMLElementType.CheckBox] = {
-            changeFunction: "change",
+            setUpChangeCallback: (subscriptionSetting) => {
+                $id(subscriptionSetting.htmlId).change(this.getChangeCallback(subscriptionSetting));
+            },
             getHTMLValue: (subscriptionSetting) => {
                 return this.manager.isChecked($id(subscriptionSetting.htmlId));
             },
@@ -40,22 +50,34 @@ export class HTMLSubscriptionManager {
                 this.manager.setChecked(subscriptionSetting.htmlId, value);
             }
         };
+        this.configByElementType[HTMLElementType.NumberInput] = {
+            setUpChangeCallback: (subscriptionSetting) => {
+                var callback = this.getChangeCallback(subscriptionSetting)
+                $id(subscriptionSetting.htmlId)[0].oninput = (ev) => {
+                    callback();
+                };
+            },
+            getHTMLValue: (subscriptionSetting) => {
+                return Number($id(subscriptionSetting.htmlId).val());
+            },
+            update: this.configByElementType[HTMLElementType.SelectBox].update
+        };
     }
 
-    registerSettings(ids: string[], type: HTMLElementType, refreshFilteringAndSorting?: boolean) {
-        this.addSettings(ids, this.configByElementType[type], refreshFilteringAndSorting);
+    registerSettings(ids: string[], type: HTMLElementType, refreshFilteringAndSorting?: boolean, subscriptionSettingConfig?: HTMLSubscriptionSettingConfig) {
+        this.addSettings(ids, this.configByElementType[type], refreshFilteringAndSorting, subscriptionSettingConfig);
     }
 
-    addSettings(ids: string[], config: HTMLSettingConfig, refreshFilteringAndSorting?: boolean) {
+    addSettings(ids: string[], config: HTMLSubscriptionSettingConfig, refreshFilteringAndSorting?: boolean, subscriptionSettingConfig?: HTMLSubscriptionSettingConfig) {
         ids.forEach(id => {
-            var setting = new HTMLSubscriptionSetting(this.manager, id, config, refreshFilteringAndSorting);
+            var setting = new HTMLSubscriptionSetting(this.manager, id, config, refreshFilteringAndSorting, subscriptionSettingConfig);
             this.subscriptionSettings.push(setting);
         });
     }
 
-    init() {
+    setUpCallbacks() {
         this.subscriptionSettings.forEach(subscriptionSetting => {
-            subscriptionSetting.init();
+            subscriptionSetting.setUpCallbacks();
         });
     }
 
@@ -66,42 +88,39 @@ export class HTMLSubscriptionManager {
     }
 }
 
-class HTMLSubscriptionSetting {
+export class HTMLSubscriptionSetting {
     id: string;
     htmlId: string;
-    config: HTMLSettingConfig;
+    config: HTMLSubscriptionSettingConfig;
     refreshFilteringAndSorting: boolean;
     manager: UIManager;
-    
-    constructor(manager: UIManager, id: string, config: HTMLSettingConfig, refreshFilteringAndSorting?: boolean, subscriptionSettingConfig?: HTMLSubscriptionSettingConfig) {
+
+    constructor(manager: UIManager, id: string, config: HTMLSubscriptionSettingConfig, refreshFilteringAndSorting?: boolean, subscriptionSettingConfig?: HTMLSubscriptionSettingConfig) {
         this.manager = manager;
         this.id = id;
         this.htmlId = manager.getHTMLId(id);
         this.refreshFilteringAndSorting = refreshFilteringAndSorting == null ? true : refreshFilteringAndSorting;
-        var getHTMLValue = config.getHTMLValue;
-        var update = config.update;
+        var getHTMLValue, update;
         if (subscriptionSettingConfig != null) {
             getHTMLValue = subscriptionSettingConfig.getHTMLValue;
             update = subscriptionSettingConfig.update;
         }
+        getHTMLValue = getHTMLValue == null ? config.getHTMLValue : getHTMLValue;
+        update = update == null ? config.update : update;
+
         this.config = {
-            changeFunction: config.changeFunction,
+            setUpChangeCallback: config.setUpChangeCallback,
             getHTMLValue: getHTMLValue,
             update: update
         }
     }
 
-    init() {
-        var self = this;
-        $id(this.htmlId)[this.config.changeFunction](function () {
-            self.manager.subscription["set" + self.id](self.config.getHTMLValue(self));
-            if (self.refreshFilteringAndSorting) {
-                self.manager.refreshFilteringAndSorting();
-            }
-        });
-    }
-
     update() {
         this.config.update(this);
     }
+
+    setUpCallbacks() {
+        this.config.setUpChangeCallback(this);
+    }
+
 }

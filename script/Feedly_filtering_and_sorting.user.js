@@ -53,6 +53,61 @@ function callbackBindedTo(thisArg) {
         return callback.bind(this);
     }).bind(thisArg);
 }
+function capitalizeFirst(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+function registerAccessors(srcObject, srcFieldName, targetPrototype, setterCallback, setterCallbackThisArg, fieldObjectName) {
+    console.log("registerAccessors: " + JSON.stringify(srcObject));
+    for (var field in srcObject) {
+        var type = typeof (srcObject[field]);
+        if (type === "object") {
+            if ($.isArray(srcObject[field])) {
+                console.log(field + ": array");
+            }
+            else {
+                console.log("register object: " + field);
+                registerAccessors(srcObject[field], srcFieldName, targetPrototype, setterCallback, setterCallbackThisArg, field);
+            }
+        }
+        else if (type !== "function") {
+            console.log("register: " + field);
+            var accessorName = capitalizeFirst(field);
+            if (fieldObjectName != null) {
+                accessorName += "_" + capitalizeFirst(fieldObjectName);
+            }
+            var getterName = (type === "boolean" ? "is" : "get") + accessorName;
+            var setterName = "set" + accessorName;
+            (function () {
+                var callbackField = field;
+                var getFinalObj = function (callbackSrcObj) {
+                    return fieldObjectName == null ? callbackSrcObj : callbackSrcObj[fieldObjectName];
+                };
+                if (targetPrototype[getterName] == null) {
+                    targetPrototype[getterName] = function () {
+                        console.log("get " + callbackField);
+                        var finalObj = getFinalObj(this[srcFieldName]);
+                        var value = finalObj[callbackField];
+                        console.log("value: " + value);
+                        return value;
+                    };
+                    console.log("registered getter: " + getterName);
+                }
+                if (targetPrototype[setterName] == null) {
+                    targetPrototype[setterName] = function (value) {
+                        console.log("set " + callbackField);
+                        var callbackSrcObj = this[srcFieldName];
+                        var finalObj = getFinalObj(callbackSrcObj);
+                        var oldValue = finalObj[callbackField];
+                        finalObj[callbackField] = value;
+                        console.log("value: " + value);
+                        setterCallback.call(setterCallbackThisArg, callbackSrcObj);
+                    };
+                }
+                console.log("registered setter: " + setterName);
+            })();
+        }
+    }
+}
 
 (function (SortingType) {
     SortingType[SortingType["PopularityDesc"] = 0] = "PopularityDesc";
@@ -69,6 +124,7 @@ var FilteringType = exported.FilteringType;
 (function (HTMLElementType) {
     HTMLElementType[HTMLElementType["SelectBox"] = 0] = "SelectBox";
     HTMLElementType[HTMLElementType["CheckBox"] = 1] = "CheckBox";
+    HTMLElementType[HTMLElementType["NumberInput"] = 2] = "NumberInput";
 })(exported.HTMLElementType || (exported.HTMLElementType = {}));
 var HTMLElementType = exported.HTMLElementType;
 function getFilteringTypes() {
@@ -121,10 +177,13 @@ var Subscription = (function () {
     function Subscription(dto, dao) {
         this.dto = dto;
         this.dao = dao;
+        if (this.dto.advancedControlsReceivedPeriod == null) {
+            this.dto.advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
+        }
     }
     Subscription.prototype.update = function (subscription, skipSave) {
         var newDTO = subscription.clone(this.getURL());
-        this.setDTO(newDTO);
+        this.dto = newDTO;
         if (!skipSave) {
             this.dao.save(this.dto);
         }
@@ -132,49 +191,42 @@ var Subscription = (function () {
     Subscription.prototype.clone = function (cloneUrl) {
         return this.dao.clone(this.dto, cloneUrl);
     };
-    Subscription.prototype.setDTO = function (dto) {
-        this.dto = dto;
-    };
     Subscription.prototype.getURL = function () {
         return this.dto.url;
     };
     Subscription.prototype.isFilteringEnabled = function () {
         return this.dto.filteringEnabled;
     };
-    Subscription.prototype.setFilteringEnabled = function (filteringEnabled) {
-        this.dto.filteringEnabled = filteringEnabled;
-        this.dao.save(this.dto);
-    };
     Subscription.prototype.isRestrictingEnabled = function () {
         return this.dto.restrictingEnabled;
-    };
-    Subscription.prototype.setRestrictingEnabled = function (restrictingEnabled) {
-        this.dto.restrictingEnabled = restrictingEnabled;
-        this.dao.save(this.dto);
     };
     Subscription.prototype.isSortingEnabled = function () {
         return this.dto.sortingEnabled;
     };
-    Subscription.prototype.setSortingEnabled = function (sortingEnabled) {
-        this.dto.sortingEnabled = sortingEnabled;
-        this.dao.save(this.dto);
-    };
     Subscription.prototype.getAdvancedControlsReceivedPeriod = function () {
         return this.dto.advancedControlsReceivedPeriod;
-    };
-    Subscription.prototype.setAdvancedControlsReceivedPeriod = function (advancedControlsReceivedPeriod) {
-        this.dto.advancedControlsReceivedPeriod = advancedControlsReceivedPeriod;
-        this.dao.save(this.dto);
     };
     Subscription.prototype.getSortingType = function () {
         return this.dto.sortingType;
     };
-    Subscription.prototype.setSortingType = function (sortingType) {
-        this.dto.sortingType = sortingType;
-        this.dao.save(this.dto);
-    };
     Subscription.prototype.getFilteringList = function (type) {
         return this.dto.filteringListsByType[type];
+    };
+    Subscription.prototype.setHours_AdvancedControlsReceivedPeriod = function (hours) {
+        if (hours > 23) {
+            return;
+        }
+        var advancedPeriodDays = Math.floor(this.getAdvancedControlsReceivedPeriod().maxHours / 24);
+        this.setMaxHours_AdvancedControlsReceivedPeriod(hours, advancedPeriodDays);
+    };
+    Subscription.prototype.setDays_AdvancedControlsReceivedPeriod = function (days) {
+        var advancedPeriodHours = this.getAdvancedControlsReceivedPeriod().maxHours % 24;
+        this.setMaxHours_AdvancedControlsReceivedPeriod(advancedPeriodHours, days);
+    };
+    Subscription.prototype.setMaxHours_AdvancedControlsReceivedPeriod = function (hours, days) {
+        var maxHours = hours + 24 * days;
+        this.getAdvancedControlsReceivedPeriod().maxHours = maxHours;
+        this.dao.save(this.dto);
     };
     Subscription.prototype.addKeyword = function (keyword, type) {
         this.getFilteringList(type).push(keyword);
@@ -199,6 +251,7 @@ var SubscriptionDAO = (function () {
     function SubscriptionDAO() {
         this.SUBSCRIPTION_ID_PREFIX = "subscription_";
         this.GLOBAL_SETTINGS_SUBSCRIPTION_URL = "---global settings---";
+        registerAccessors(new SubscriptionDTO(""), "dto", Subscription.prototype, this.save, this);
     }
     SubscriptionDAO.prototype.save = function (dto) {
         var url = dto.url;
@@ -229,7 +282,7 @@ var SubscriptionDAO = (function () {
         clone.restrictingEnabled = dtoToClone.restrictingEnabled;
         clone.sortingEnabled = dtoToClone.sortingEnabled;
         clone.sortingType = dtoToClone.sortingType;
-        clone.advancedControlsReceivedPeriod = dtoToClone.advancedControlsReceivedPeriod != null ? dtoToClone.advancedControlsReceivedPeriod : new AdvancedControlsReceivedPeriod();
+        clone.advancedControlsReceivedPeriod = dtoToClone.advancedControlsReceivedPeriod;
         getFilteringTypes().forEach(function (type) {
             clone.filteringListsByType[type] = dtoToClone.filteringListsByType[type].slice(0);
         });
@@ -365,7 +418,6 @@ var ArticleManager = (function () {
             if (this.minReadArticleAge == -1 || publishAge < this.minReadArticleAge) {
                 this.minReadArticleAge = publishAge;
                 this.lastReadArticle = article;
-                console.log("new min age title: " + title);
             }
         }
         else {
@@ -473,7 +525,7 @@ var ArticleManager = (function () {
 }());
 
 var templates = {
-    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <div class='FFnS_settings'> <span class='FFnS_settings_header'>General settings: </span> <span class='FFnS_settings_span tooltip'> Auto load all unread articles <span class='tooltiptext'>Not applied if there are no unread articles</span> </span> <input id='FFnS_autoLoadAllArticles' type='checkbox'> <span class='FFnS_settings_span tooltip'> Always use global settings <span class='tooltiptext'>Use the same filtering and sorting settings for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span> </span> <input id='FFnS_globalSettingsEnabled' type='checkbox'> </div> <div class='FFnS_settings'> <span id='FFnS_subscription_title' class='FFnS_settings_header'></span> <span> <span class='FFnS_settings_span tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_FilteringEnabled' type='checkbox'> </span> <span> <span class='FFnS_settings_span tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_RestrictingEnabled' type='checkbox'> </span> <span> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_SortingEnabled' type='checkbox'> <select id='FFnS_SortingType' class='FFnS_input'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li class=''> <a href='#FFnS_tab_AdvancedControls'>Advanced controls</a> </li> <li class=''> <a href='#FFnS_tab_ImportMenu'>Import settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_AdvancedControls' class='FFnS_Tab_Menu'> <div id='FFnS_MaxPeriod_Infos'> <span class='FFnS_settings_span'>Articles with a receive time period less than</span> <input id='FFnS_AdvancedPeriod_hours' class='FFnS_input' type='number' min='0'> <span class='FFnS_settings_span'>hours and</span> <input id='FFnS_AdvancedPeriod_days' class='FFnS_input' type='number' min='0'> <span class='FFnS_settings_span'>days</span> <span class='FFnS_settings_span'>should be:</span> </div> <span>Kept unread</span> <input id='FFnS_AdvancedPeriod_keepUnread' type='checkbox'> <span>Hidden</span> <input id='FFnS_AdvancedPeriod_hide' type='checkbox'> <span>Visible if hot (highlighted popularity)</span> <input id='FFnS_AdvancedPeriod_showIfHot' type='checkbox'> <span>Visible if popularity is superior to:</span> <input id='FFnS_AdvancedPeriod_minPopularity' class='FFnS_input' type='number' min='0'> </div> <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span class='FFnS_settings_span'>Import settings from url: </span> <select id='FFnS_ImportMenu_SubscriptionSelect' class='FFnS_input'> {{ImportMenu.SubscriptionOptions}} </select> <div><button id='FFnS_ImportMenu_Submit'>Import</button></div> </div> </div> </div> </div> </div>",
+    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <div class='FFnS_settings'> <span class='FFnS_settings_header'>General settings: </span> <span class='FFnS_settings_span tooltip'> Auto load all unread articles <span class='tooltiptext'>Not applied if there are no unread articles</span> </span> <input id='FFnS_autoLoadAllArticles' type='checkbox'> <span class='FFnS_settings_span tooltip'> Always use global settings <span class='tooltiptext'>Use the same filtering and sorting settings for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span> </span> <input id='FFnS_globalSettingsEnabled' type='checkbox'> </div> <div class='FFnS_settings'> <span id='FFnS_subscription_title' class='FFnS_settings_header'></span> <span> <span class='FFnS_settings_span tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_FilteringEnabled' type='checkbox'> </span> <span> <span class='FFnS_settings_span tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_RestrictingEnabled' type='checkbox'> </span> <span> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_SortingEnabled' type='checkbox'> <select id='FFnS_SortingType' class='FFnS_input'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li class=''> <a href='#FFnS_tab_AdvancedControls'>Advanced controls</a> </li> <li class=''> <a href='#FFnS_tab_ImportMenu'>Import settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_AdvancedControls' class='FFnS_Tab_Menu'> <div id='FFnS_MaxPeriod_Infos'> <span class='FFnS_settings_span'>Articles with a receive time period less than</span> <input id='FFnS_Hours_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0' max='23'> <span class='FFnS_settings_span'>hours and</span> <input id='FFnS_Days_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0'> <span class='FFnS_settings_span'>days</span> <span class='FFnS_settings_span'>should be:</span> </div> <span>Kept unread</span> <input id='FFnS_KeepUnread_AdvancedControlsReceivedPeriod' type='checkbox'> <span>Hidden</span> <input id='FFnS_Hide_AdvancedControlsReceivedPeriod' type='checkbox'> <span>Visible if hot (highlighted popularity)</span> <input id='FFnS_ShowIfHot_AdvancedControlsReceivedPeriod' type='checkbox'> <span>Visible if popularity is superior to:</span> <input id='FFnS_MinPopularity_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0'> </div> <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span class='FFnS_settings_span'>Import settings from url: </span> <select id='FFnS_ImportMenu_SubscriptionSelect' class='FFnS_input'> {{ImportMenu.SubscriptionOptions}} </select> <div><button id='FFnS_ImportMenu_Submit'>Import</button></div> </div> </div> </div> </div> </div>",
     "filteringListHTML": "<div id='{{FilteringTypeTabId}}' class='FFnS_Tab_Menu'> <input id='{{inputId}}' class='FFnS_input' size='10' type='text'> <span id='{{plusBtnId}}'> <img src='{{plusIconLink}}' class='FFnS_icon' /> </span> <span id='{{filetringKeywordsId}}'></span> <span id='{{eraseBtnId}}'> <img src='{{eraseIconLink}}' class='FFnS_icon' /> </span> </div>",
     "filteringKeywordHTML": "<button id='{{keywordId}}' type='button' class='FFnS_keyword'>{{keyword}}</button>",
     "optionHTML": "<option value='{{value}}'>{{value}}</option>",
@@ -486,29 +538,29 @@ var UIManager = (function () {
         this.keywordToId = {};
         this.idCount = 1;
         this.htmlSettingsElements = [
-            { type: HTMLElementType.SelectBox, ids: ["SortingType"] },
-            { type: HTMLElementType.CheckBox, ids: ["FilteringEnabled", "RestrictingEnabled", "SortingEnabled"] }
+            {
+                type: HTMLElementType.SelectBox, ids: ["SortingType"]
+            },
+            {
+                type: HTMLElementType.CheckBox,
+                ids: ["FilteringEnabled", "RestrictingEnabled", "SortingEnabled",
+                    "KeepUnread_AdvancedControlsReceivedPeriod", "Hide_AdvancedControlsReceivedPeriod", "ShowIfHot_AdvancedControlsReceivedPeriod"]
+            },
+            {
+                type: HTMLElementType.NumberInput, ids: ["MinPopularity_AdvancedControlsReceivedPeriod"]
+            }
         ];
         this.settingsDivContainerId = this.getHTMLId("settingsDivContainer");
         this.closeBtnId = this.getHTMLId("CloseSettingsBtn");
-        this.advancedPeriodHoursId = this.getHTMLId("AdvancedPeriod_hours");
-        this.advancedPeriodDaysId = this.getHTMLId("AdvancedPeriod_days");
-        this.keepUnreadId = this.getHTMLId("AdvancedPeriod_keepUnread");
-        this.advancedPeriodHideId = this.getHTMLId("AdvancedPeriod_hide");
-        this.showIfHotId = this.getHTMLId("AdvancedPeriod_showIfHot");
-        this.minPopularityId = this.getHTMLId("AdvancedPeriod_minPopularity");
     }
     UIManager.prototype.init = function () {
-        var _this = this;
         this.subscriptionManager = new SubscriptionManager();
         this.articleManager = new ArticleManager(this.subscriptionManager);
+        this.htmlSubscriptionManager = new HTMLSubscriptionManager(this);
         this.autoLoadAllArticlesCB = new GlobalSettingsCheckBox("autoLoadAllArticles", this, false);
         this.globalSettingsEnabledCB = new GlobalSettingsCheckBox("globalSettingsEnabled", this);
         this.initUI();
-        this.htmlSubscriptionManager = new HTMLSubscriptionManager(this);
-        this.htmlSettingsElements.forEach(function (element) {
-            _this.htmlSubscriptionManager.registerSettings(element.ids, element.type);
-        });
+        this.registerSettings();
         this.updatePage();
         this.initSettingsCallbacks();
         //var evalFunc = window["eval"];
@@ -546,7 +598,6 @@ var UIManager = (function () {
     };
     UIManager.prototype.updateSubscriptionSettings = function () {
         this.htmlSubscriptionManager.update();
-        this.updateAdvancedControlsReceivedPeriodSettings();
     };
     UIManager.prototype.updateSubscriptionTitle = function (globalSettingsEnabled) {
         var title = globalSettingsEnabled ? "Global" : "Subscription";
@@ -623,17 +674,32 @@ var UIManager = (function () {
             });
         });
     };
+    UIManager.prototype.registerSettings = function () {
+        var _this = this;
+        this.htmlSettingsElements.forEach(function (element) {
+            _this.htmlSubscriptionManager.registerSettings(element.ids, element.type);
+        });
+        this.htmlSubscriptionManager.registerSettings(["Hours_AdvancedControlsReceivedPeriod", "Days_AdvancedControlsReceivedPeriod"], HTMLElementType.NumberInput, false, {
+            update: function (subscriptionSetting) {
+                var advancedControlsReceivedPeriod = subscriptionSetting.manager.subscription.getAdvancedControlsReceivedPeriod();
+                var maxHours = advancedControlsReceivedPeriod.maxHours;
+                var advancedPeriodHours = maxHours % 24;
+                var advancedPeriodDays = Math.floor(maxHours / 24);
+                if (subscriptionSetting.id.indexOf("Hours") != -1) {
+                    console.log("Hours: " + advancedPeriodHours);
+                    $id(subscriptionSetting.htmlId).val(advancedPeriodHours);
+                }
+                else {
+                    console.log("Days: " + advancedPeriodDays);
+                    $id(subscriptionSetting.htmlId).val(advancedPeriodDays);
+                }
+            }
+        });
+    };
     UIManager.prototype.initSettingsCallbacks = function () {
         var _this = this;
         var this_ = this;
-        this.htmlSubscriptionManager.init();
-        function updateAdvancedControlsReceivedPeriodCallback() {
-            this_.updateAdvancedControlsReceivedPeriod();
-        }
-        $id(this.keepUnreadId).change(updateAdvancedControlsReceivedPeriodCallback);
-        $id(this.advancedPeriodHideId).change(updateAdvancedControlsReceivedPeriodCallback);
-        $id(this.showIfHotId).change(updateAdvancedControlsReceivedPeriodCallback);
-        $id(this.minPopularityId).change(updateAdvancedControlsReceivedPeriodCallback);
+        this.htmlSubscriptionManager.setUpCallbacks();
         $id(this.closeBtnId).click(function () {
             $id(this_.settingsDivContainerId).toggle();
         });
@@ -641,35 +707,6 @@ var UIManager = (function () {
             _this.importKeywords();
         });
         this.setUpFilteringListEvents();
-    };
-    UIManager.prototype.updateAdvancedControlsReceivedPeriod = function () {
-        var advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
-        advancedControlsReceivedPeriod.keepUnread = this.isChecked($id(this.keepUnreadId));
-        advancedControlsReceivedPeriod.hide = this.isChecked($id(this.advancedPeriodHideId));
-        advancedControlsReceivedPeriod.showIfHot = this.isChecked($id(this.showIfHotId));
-        advancedControlsReceivedPeriod.minPopularity = Number($id(this.minPopularityId).val());
-        var advancedPeriodHours = Number($id(this.advancedPeriodHoursId).val());
-        var advancedPeriodDays = Number($id(this.advancedPeriodDaysId).val());
-        advancedControlsReceivedPeriod.maxHours = advancedPeriodHours + 24 * advancedPeriodDays;
-        this.subscription.setAdvancedControlsReceivedPeriod(advancedControlsReceivedPeriod);
-    };
-    UIManager.prototype.updateAdvancedControlsReceivedPeriodSettings = function () {
-        var advancedControlsReceivedPeriod = this.subscription.getAdvancedControlsReceivedPeriod();
-        if (advancedControlsReceivedPeriod == null) {
-            advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
-        }
-        var maxHours = advancedControlsReceivedPeriod.maxHours;
-        this.setChecked(this.keepUnreadId, advancedControlsReceivedPeriod.keepUnread);
-        this.setChecked(this.advancedPeriodHideId, advancedControlsReceivedPeriod.hide);
-        this.setChecked(this.showIfHotId, advancedControlsReceivedPeriod.showIfHot);
-        $id(this.minPopularityId).val(advancedControlsReceivedPeriod.minPopularity);
-        var advancedPeriodHours = Math.floor(advancedControlsReceivedPeriod.maxHours / 24);
-        var advancedPeriodDays = maxHours % 24;
-        $id(this.advancedPeriodHoursId).val(advancedPeriodHours);
-        $id(this.advancedPeriodDaysId).val(advancedPeriodDays);
-        $id(this.minPopularityId)[0].oninput = this.updateAdvancedControlsReceivedPeriod;
-        $id(this.advancedPeriodHoursId)[0].oninput = this.updateAdvancedControlsReceivedPeriod;
-        $id(this.advancedPeriodDaysId)[0].oninput = this.updateAdvancedControlsReceivedPeriod;
     };
     UIManager.prototype.setUpFilteringListEvents = function () {
         getFilteringTypes().forEach(this.setUpFilteringListManagementEvents, this);
@@ -812,7 +849,9 @@ var HTMLSubscriptionManager = (function () {
         this.configByElementType = {};
         this.manager = manager;
         this.configByElementType[HTMLElementType.SelectBox] = {
-            changeFunction: "change",
+            setUpChangeCallback: function (subscriptionSetting) {
+                $id(subscriptionSetting.htmlId).change(_this.getChangeCallback(subscriptionSetting));
+            },
             getHTMLValue: function (subscriptionSetting) {
                 return $id(subscriptionSetting.htmlId).val();
             },
@@ -822,7 +861,9 @@ var HTMLSubscriptionManager = (function () {
             }
         };
         this.configByElementType[HTMLElementType.CheckBox] = {
-            changeFunction: "change",
+            setUpChangeCallback: function (subscriptionSetting) {
+                $id(subscriptionSetting.htmlId).change(_this.getChangeCallback(subscriptionSetting));
+            },
             getHTMLValue: function (subscriptionSetting) {
                 return _this.manager.isChecked($id(subscriptionSetting.htmlId));
             },
@@ -831,20 +872,40 @@ var HTMLSubscriptionManager = (function () {
                 _this.manager.setChecked(subscriptionSetting.htmlId, value);
             }
         };
+        this.configByElementType[HTMLElementType.NumberInput] = {
+            setUpChangeCallback: function (subscriptionSetting) {
+                var callback = _this.getChangeCallback(subscriptionSetting);
+                $id(subscriptionSetting.htmlId)[0].oninput = function (ev) {
+                    callback();
+                };
+            },
+            getHTMLValue: function (subscriptionSetting) {
+                return Number($id(subscriptionSetting.htmlId).val());
+            },
+            update: this.configByElementType[HTMLElementType.SelectBox].update
+        };
     }
-    HTMLSubscriptionManager.prototype.registerSettings = function (ids, type, refreshFilteringAndSorting) {
-        this.addSettings(ids, this.configByElementType[type], refreshFilteringAndSorting);
+    HTMLSubscriptionManager.prototype.getChangeCallback = function (setting) {
+        return function () {
+            setting.manager.subscription["set" + setting.id](setting.config.getHTMLValue(setting));
+            if (setting.refreshFilteringAndSorting) {
+                setting.manager.refreshFilteringAndSorting();
+            }
+        };
     };
-    HTMLSubscriptionManager.prototype.addSettings = function (ids, config, refreshFilteringAndSorting) {
+    HTMLSubscriptionManager.prototype.registerSettings = function (ids, type, refreshFilteringAndSorting, subscriptionSettingConfig) {
+        this.addSettings(ids, this.configByElementType[type], refreshFilteringAndSorting, subscriptionSettingConfig);
+    };
+    HTMLSubscriptionManager.prototype.addSettings = function (ids, config, refreshFilteringAndSorting, subscriptionSettingConfig) {
         var _this = this;
         ids.forEach(function (id) {
-            var setting = new HTMLSubscriptionSetting(_this.manager, id, config, refreshFilteringAndSorting);
+            var setting = new HTMLSubscriptionSetting(_this.manager, id, config, refreshFilteringAndSorting, subscriptionSettingConfig);
             _this.subscriptionSettings.push(setting);
         });
     };
-    HTMLSubscriptionManager.prototype.init = function () {
+    HTMLSubscriptionManager.prototype.setUpCallbacks = function () {
         this.subscriptionSettings.forEach(function (subscriptionSetting) {
-            subscriptionSetting.init();
+            subscriptionSetting.setUpCallbacks();
         });
     };
     HTMLSubscriptionManager.prototype.update = function () {
@@ -860,29 +921,24 @@ var HTMLSubscriptionSetting = (function () {
         this.id = id;
         this.htmlId = manager.getHTMLId(id);
         this.refreshFilteringAndSorting = refreshFilteringAndSorting == null ? true : refreshFilteringAndSorting;
-        var getHTMLValue = config.getHTMLValue;
-        var update = config.update;
+        var getHTMLValue, update;
         if (subscriptionSettingConfig != null) {
             getHTMLValue = subscriptionSettingConfig.getHTMLValue;
             update = subscriptionSettingConfig.update;
         }
+        getHTMLValue = getHTMLValue == null ? config.getHTMLValue : getHTMLValue;
+        update = update == null ? config.update : update;
         this.config = {
-            changeFunction: config.changeFunction,
+            setUpChangeCallback: config.setUpChangeCallback,
             getHTMLValue: getHTMLValue,
             update: update
         };
     }
-    HTMLSubscriptionSetting.prototype.init = function () {
-        var self = this;
-        $id(this.htmlId)[this.config.changeFunction](function () {
-            self.manager.subscription["set" + self.id](self.config.getHTMLValue(self));
-            if (self.refreshFilteringAndSorting) {
-                self.manager.refreshFilteringAndSorting();
-            }
-        });
-    };
     HTMLSubscriptionSetting.prototype.update = function () {
         this.config.update(this);
+    };
+    HTMLSubscriptionSetting.prototype.setUpCallbacks = function () {
+        this.config.setUpChangeCallback(this);
     };
     return HTMLSubscriptionSetting;
 }());

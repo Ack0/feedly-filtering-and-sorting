@@ -6,88 +6,81 @@ import {FilteringType, SortingType, getFilteringTypes} from "./DataTypes";
 
 export class Subscription {
     dto: SubscriptionDTO;
-    dao: SubscriptionDAO;
+    private dao: SubscriptionDAO;
 
     constructor(dto: SubscriptionDTO, dao: SubscriptionDAO) {
         this.dto = dto;
         this.dao = dao;
+        if (this.dto.advancedControlsReceivedPeriod == null) {
+            this.dto.advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
+        }
     }
 
     update(subscription: Subscription, skipSave?: boolean) {
         var newDTO = subscription.clone(this.getURL());
-        this.setDTO(newDTO);
-        if(! skipSave) {
+        this.dto = newDTO;
+        if (!skipSave) {
             this.dao.save(this.dto);
         }
     }
-    
+
     clone(cloneUrl: string): SubscriptionDTO {
         return this.dao.clone(this.dto, cloneUrl);
-    }
-
-    private setDTO(dto : SubscriptionDTO) {
-        this.dto = dto;
     }
 
     getURL(): string {
         return this.dto.url;
     }
-    
+
     isFilteringEnabled(): boolean {
         return this.dto.filteringEnabled;
     }
-    
-    setFilteringEnabled(filteringEnabled: boolean) {
-        this.dto.filteringEnabled = filteringEnabled;
-        this.dao.save(this.dto);
-    }
-    
+
     isRestrictingEnabled(): boolean {
         return this.dto.restrictingEnabled;
     }
-    
-    setRestrictingEnabled(restrictingEnabled: boolean) {
-        this.dto.restrictingEnabled = restrictingEnabled;
-        this.dao.save(this.dto);
-    }
-    
+
     isSortingEnabled(): boolean {
         return this.dto.sortingEnabled;
     }
-    
-    setSortingEnabled(sortingEnabled: boolean) {
-        this.dto.sortingEnabled = sortingEnabled;
-        this.dao.save(this.dto);
-    }
-    
+
     getAdvancedControlsReceivedPeriod(): AdvancedControlsReceivedPeriod {
         return this.dto.advancedControlsReceivedPeriod;
     }
-    
-    setAdvancedControlsReceivedPeriod(advancedControlsReceivedPeriod: AdvancedControlsReceivedPeriod) {
-        this.dto.advancedControlsReceivedPeriod = advancedControlsReceivedPeriod;
-        this.dao.save(this.dto);
-    }
-    
+
     getSortingType(): SortingType {
         return this.dto.sortingType;
-    }
-    
-    setSortingType(sortingType: SortingType) {
-        this.dto.sortingType = sortingType;
-        this.dao.save(this.dto);
     }
 
     getFilteringList(type: FilteringType): string[] {
         return this.dto.filteringListsByType[type];
     }
-    
-    addKeyword(keyword: string, type: FilteringType) {        
+
+    setHours_AdvancedControlsReceivedPeriod(hours: number) {
+        if (hours > 23) {
+            return;
+        }
+        var advancedPeriodDays = Math.floor(this.getAdvancedControlsReceivedPeriod().maxHours / 24);
+        this.setMaxHours_AdvancedControlsReceivedPeriod(hours, advancedPeriodDays);
+    }
+
+    setDays_AdvancedControlsReceivedPeriod(days: number) {
+        var advancedPeriodHours = this.getAdvancedControlsReceivedPeriod().maxHours % 24;
+        this.setMaxHours_AdvancedControlsReceivedPeriod(advancedPeriodHours, days);
+    }
+
+    setMaxHours_AdvancedControlsReceivedPeriod(hours: number, days: number) {
+        var maxHours = hours + 24 * days;
+        this.getAdvancedControlsReceivedPeriod().maxHours = maxHours;
+        this.dao.save(this.dto);
+    }
+
+    addKeyword(keyword: string, type: FilteringType) {
         this.getFilteringList(type).push(keyword);
         this.dao.save(this.dto);
     }
-    
-    removeKeyword(keyword: string, type: FilteringType) {        
+
+    removeKeyword(keyword: string, type: FilteringType) {
         var keywordList = this.getFilteringList(type);
         var index = keywordList.indexOf(keyword);
         if (index > -1) {
@@ -95,7 +88,7 @@ export class Subscription {
         }
         this.dao.save(this.dto);
     }
-    
+
     resetFilteringList(type: FilteringType) {
         this.getFilteringList(type).length = 0;
         this.dao.save(this.dto);

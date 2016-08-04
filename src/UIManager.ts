@@ -6,7 +6,7 @@ import {AdvancedControlsReceivedPeriod} from "./SubscriptionDTO";
 import {ArticleManager} from "./ArticleManager";
 import {SubscriptionManager} from "./SubscriptionManager";
 import {GlobalSettingsCheckBox} from "./HTMLGlobalSettings";
-import {HTMLSubscriptionManager} from "./HTMLSubscription";
+import {HTMLSubscriptionManager, HTMLSubscriptionSetting} from "./HTMLSubscription";
 import {$id, bindMarkup} from "./Utils";
 
 export class UIManager {
@@ -22,31 +22,30 @@ export class UIManager {
     idCount = 1;
 
     htmlSettingsElements = [
-        {type: HTMLElementType.SelectBox, ids: ["SortingType"]},
-        {type: HTMLElementType.CheckBox, ids: ["FilteringEnabled", "RestrictingEnabled", "SortingEnabled"]}
+        {
+            type: HTMLElementType.SelectBox, ids: ["SortingType"]
+        },
+        {
+            type: HTMLElementType.CheckBox,
+            ids: ["FilteringEnabled", "RestrictingEnabled", "SortingEnabled",
+                "KeepUnread_AdvancedControlsReceivedPeriod", "Hide_AdvancedControlsReceivedPeriod", "ShowIfHot_AdvancedControlsReceivedPeriod"]
+        },
+        {
+            type: HTMLElementType.NumberInput, ids: ["MinPopularity_AdvancedControlsReceivedPeriod"]
+        }
     ];
 
     settingsDivContainerId = this.getHTMLId("settingsDivContainer");
     closeBtnId = this.getHTMLId("CloseSettingsBtn");
-    advancedPeriodHoursId = this.getHTMLId("AdvancedPeriod_hours");
-    advancedPeriodDaysId = this.getHTMLId("AdvancedPeriod_days");
-    keepUnreadId = this.getHTMLId("AdvancedPeriod_keepUnread");
-    advancedPeriodHideId = this.getHTMLId("AdvancedPeriod_hide");
-    showIfHotId = this.getHTMLId("AdvancedPeriod_showIfHot");
-    minPopularityId = this.getHTMLId("AdvancedPeriod_minPopularity");
-    
+
     init() {
         this.subscriptionManager = new SubscriptionManager();
         this.articleManager = new ArticleManager(this.subscriptionManager);
+        this.htmlSubscriptionManager = new HTMLSubscriptionManager(this);
         this.autoLoadAllArticlesCB = new GlobalSettingsCheckBox("autoLoadAllArticles", this, false);
         this.globalSettingsEnabledCB = new GlobalSettingsCheckBox("globalSettingsEnabled", this);
         this.initUI();
-
-        this.htmlSubscriptionManager = new HTMLSubscriptionManager(this);
-        this.htmlSettingsElements.forEach(element => {
-            this.htmlSubscriptionManager.registerSettings(element.ids, element.type);
-        });
-
+        this.registerSettings();
         this.updatePage();
         this.initSettingsCallbacks();
 
@@ -91,7 +90,6 @@ export class UIManager {
 
     updateSubscriptionSettings() {
         this.htmlSubscriptionManager.update();
-        this.updateAdvancedControlsReceivedPeriodSettings();
     }
 
     updateSubscriptionTitle(globalSettingsEnabled: boolean) {
@@ -179,18 +177,34 @@ export class UIManager {
         });
     }
 
+    registerSettings() {
+        this.htmlSettingsElements.forEach(element => {
+            this.htmlSubscriptionManager.registerSettings(element.ids, element.type);
+        });
+        this.htmlSubscriptionManager.registerSettings(
+            ["Hours_AdvancedControlsReceivedPeriod", "Days_AdvancedControlsReceivedPeriod"],
+            HTMLElementType.NumberInput, false, {
+                update: (subscriptionSetting: HTMLSubscriptionSetting) => {
+                    var advancedControlsReceivedPeriod = subscriptionSetting.manager.subscription.getAdvancedControlsReceivedPeriod();
+                    var maxHours = advancedControlsReceivedPeriod.maxHours;
+                    var advancedPeriodHours = maxHours % 24;
+                    var advancedPeriodDays = Math.floor(maxHours / 24);
+                    if (subscriptionSetting.id.indexOf("Hours") != -1) {
+                        console.log("Hours: " + advancedPeriodHours);
+                        $id(subscriptionSetting.htmlId).val(advancedPeriodHours);
+                    } else {
+                        console.log("Days: " + advancedPeriodDays)
+                        $id(subscriptionSetting.htmlId).val(advancedPeriodDays);
+                    }
+                }
+            }
+        );
+    }
+
     initSettingsCallbacks() {
         var this_ = this;
 
-        this.htmlSubscriptionManager.init();
-        
-        function updateAdvancedControlsReceivedPeriodCallback() {
-            this_.updateAdvancedControlsReceivedPeriod();
-        }
-        $id(this.keepUnreadId).change(updateAdvancedControlsReceivedPeriodCallback);
-        $id(this.advancedPeriodHideId).change(updateAdvancedControlsReceivedPeriodCallback);
-        $id(this.showIfHotId).change(updateAdvancedControlsReceivedPeriodCallback);
-        $id(this.minPopularityId).change(updateAdvancedControlsReceivedPeriodCallback);
+        this.htmlSubscriptionManager.setUpCallbacks();
 
         $id(this.closeBtnId).click(function () {
             $id(this_.settingsDivContainerId).toggle();
@@ -201,38 +215,6 @@ export class UIManager {
         });
 
         this.setUpFilteringListEvents();
-    }
-
-    updateAdvancedControlsReceivedPeriod() {
-        var advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
-        advancedControlsReceivedPeriod.keepUnread = this.isChecked($id(this.keepUnreadId));
-        advancedControlsReceivedPeriod.hide = this.isChecked($id(this.advancedPeriodHideId));
-        advancedControlsReceivedPeriod.showIfHot = this.isChecked($id(this.showIfHotId));
-        advancedControlsReceivedPeriod.minPopularity = Number($id(this.minPopularityId).val());
-        var advancedPeriodHours = Number($id(this.advancedPeriodHoursId).val());
-        var advancedPeriodDays = Number($id(this.advancedPeriodDaysId).val());
-        advancedControlsReceivedPeriod.maxHours = advancedPeriodHours + 24 * advancedPeriodDays;
-        this.subscription.setAdvancedControlsReceivedPeriod(advancedControlsReceivedPeriod);
-    }
-
-    updateAdvancedControlsReceivedPeriodSettings() {
-        var advancedControlsReceivedPeriod = this.subscription.getAdvancedControlsReceivedPeriod();
-        if (advancedControlsReceivedPeriod == null) {
-            advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
-        }
-        var maxHours = advancedControlsReceivedPeriod.maxHours;
-        this.setChecked(this.keepUnreadId, advancedControlsReceivedPeriod.keepUnread);
-        this.setChecked(this.advancedPeriodHideId, advancedControlsReceivedPeriod.hide);
-        this.setChecked(this.showIfHotId, advancedControlsReceivedPeriod.showIfHot);
-        $id(this.minPopularityId).val(advancedControlsReceivedPeriod.minPopularity);
-        var advancedPeriodHours = Math.floor(advancedControlsReceivedPeriod.maxHours / 24);
-        var advancedPeriodDays = maxHours % 24;
-        $id(this.advancedPeriodHoursId).val(advancedPeriodHours);
-        $id(this.advancedPeriodDaysId).val(advancedPeriodDays);
-
-        $id(this.minPopularityId)[0].oninput = this.updateAdvancedControlsReceivedPeriod;
-        $id(this.advancedPeriodHoursId)[0].oninput = this.updateAdvancedControlsReceivedPeriod;
-        $id(this.advancedPeriodDaysId)[0].oninput = this.updateAdvancedControlsReceivedPeriod;
     }
 
     private setUpFilteringListEvents() {
