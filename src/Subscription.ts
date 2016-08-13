@@ -9,11 +9,8 @@ export class Subscription {
     private dao: SubscriptionDAO;
 
     constructor(dto: SubscriptionDTO, dao: SubscriptionDAO) {
-        this.dto = dto;
+        this.dto = dao.clone(dto, dto.url);
         this.dao = dao;
-        if (this.dto.advancedControlsReceivedPeriod == null) {
-            this.dto.advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
-        }
     }
 
     update(subscription: Subscription, skipSave?: boolean) {

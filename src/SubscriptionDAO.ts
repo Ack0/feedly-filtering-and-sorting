@@ -40,15 +40,40 @@ export class SubscriptionDAO {
     
     clone(dtoToClone : SubscriptionDTO, cloneUrl: string): SubscriptionDTO {
         var clone = new SubscriptionDTO(cloneUrl);
-        clone.filteringEnabled = dtoToClone.filteringEnabled;
-        clone.restrictingEnabled = dtoToClone.restrictingEnabled;
-        clone.sortingEnabled = dtoToClone.sortingEnabled;
-        clone.sortingType = dtoToClone.sortingType;
-        clone.advancedControlsReceivedPeriod = dtoToClone.advancedControlsReceivedPeriod;
+        if (dtoToClone.filteringEnabled != null)
+            clone.filteringEnabled = dtoToClone.filteringEnabled;
+        if (dtoToClone.restrictingEnabled != null)
+            clone.restrictingEnabled = dtoToClone.restrictingEnabled;
+        if (dtoToClone.sortingEnabled != null)
+            clone.sortingEnabled = dtoToClone.sortingEnabled;
+        if (dtoToClone.sortingType != null)
+            clone.sortingType = dtoToClone.sortingType;
+        clone.advancedControlsReceivedPeriod = this.cloneAdvancedControlsReceivedPeriod(dtoToClone);
         getFilteringTypes().forEach((type) => {
             clone.filteringListsByType[type] = dtoToClone.filteringListsByType[type].slice(0);
         });
         return clone;
+    }
+
+    cloneAdvancedControlsReceivedPeriod(dtoToClone : SubscriptionDTO) : AdvancedControlsReceivedPeriod {
+        var advCtrols = new AdvancedControlsReceivedPeriod();
+        if (dtoToClone == null) {
+            advCtrols;
+        }
+        var advCtrolsToClone = dtoToClone.advancedControlsReceivedPeriod;
+        if (advCtrolsToClone.maxHours != null)
+            advCtrols.maxHours = advCtrolsToClone.maxHours;
+        if (advCtrolsToClone.keepUnread != null)
+            advCtrols.keepUnread = advCtrolsToClone.keepUnread;
+        if (advCtrolsToClone.hide != null)
+            advCtrols.hide = advCtrolsToClone.hide;
+        if (advCtrolsToClone.showIfHot != null)
+            advCtrols.showIfHot = advCtrolsToClone.showIfHot;
+        if (advCtrolsToClone.minPopularity != null)
+            advCtrols.minPopularity = advCtrolsToClone.minPopularity;
+        if (advCtrolsToClone.markAsReadVisible != null)
+            advCtrols.markAsReadVisible = advCtrolsToClone.markAsReadVisible;
+        return advCtrols;
     }
 
     loadGlobalSettings() : Subscription {

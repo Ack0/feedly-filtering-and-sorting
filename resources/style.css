@@ -33,7 +33,7 @@
 	color: #333690;
 }
 
-.FFnS_settings span + input {
+input {
 	vertical-align: middle;
 }
 
@@ -43,7 +43,6 @@
 
 .FFnS_input {
 	font-size:12px;
-	vertical-align: middle;
 }
 
 #FFnS_tabs_menu {

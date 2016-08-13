@@ -3,17 +3,22 @@
 import {FilteringType, SortingType} from "./DataTypes";
 import {Subscription} from "./Subscription";
 import {SubscriptionManager} from "./SubscriptionManager";
+import {$id, isRadioChecked} from "./Utils";
 
 export class ArticleManager {
     subscriptionManager: SubscriptionManager;
     articlesCount = 0;
     hiddenCount = 0;
-    minReadArticleAge = -1;
-    lastReadArticle: JQuery;
+    lastReadArticleAge = -1;
+    lastReadArticleGroup: Article[];
+    articlesToMarkAsRead: Article[];
     hiddingInfoClass = "FFnS_Hidding_Info";
+    eval = window["eval"];
 
     constructor(subscriptionManager: SubscriptionManager) {
         this.subscriptionManager = subscriptionManager;
+        this.eval("(" + this.overrideMarkAsRead.toString() + ")();");
+        this.eval("window.ext = (" + JSON.stringify(ext).replace(/\s+/g, ' ') + ");");
     }
 
     refreshArticles() {
@@ -24,9 +29,11 @@ export class ArticleManager {
     resetArticles() {
         this.articlesCount = 0;
         this.hiddenCount = 0;
-        this.minReadArticleAge = -1;
-        this.lastReadArticle = null;
+        this.lastReadArticleAge = -1;
+        this.lastReadArticleGroup = [];
+        this.articlesToMarkAsRead = [];
         $("." + this.hiddingInfoClass).remove();
+        this.eval("window.FFnS = ({});");
     }
 
     getCurrentSub(): Subscription {
@@ -38,9 +45,9 @@ export class ArticleManager {
     }
 
     addArticle(articleNode: Node) {
-        var article = $(articleNode);
+        var article = new Article(articleNode);
         var sub = this.getCurrentSub();
-        var title = article.attr(ext.articleTitleAttribute).toLowerCase();
+        var title = article.getTitle();
         if (sub.isFilteringEnabled() || sub.isRestrictingEnabled()) {
             var restrictedOnKeywords = sub.getFilteringList(FilteringType.RestrictedOn);
             var filteredOutKeywords = sub.getFilteringList(FilteringType.FilteredOut);
@@ -72,17 +79,31 @@ export class ArticleManager {
             article.css("display", "");
         }
 
-        var threshold = 6;
-        var publishAge = this.getPublishAge(article);
-        if (publishAge > threshold) {
-            if (this.minReadArticleAge == -1 || publishAge < this.minReadArticleAge) {
-                this.minReadArticleAge = publishAge;
-                this.lastReadArticle = article;
-                // console.log("new min age title: " + title);
+        var advControls = sub.getAdvancedControlsReceivedPeriod();
+        var threshold = Date.now() - advControls.maxHours * 3600 * 1000;
+        var publishAge = article.getPublishAge();
+        if (publishAge <= threshold) {
+            if (advControls.keepUnread && (this.lastReadArticleAge == -1 ||
+                publishAge >= this.lastReadArticleAge)) {
+                if (publishAge != this.lastReadArticleAge) {
+                    this.lastReadArticleGroup = [article]
+                } else {
+                    this.lastReadArticleGroup.push(article);
+                }
+                this.lastReadArticleAge = publishAge;
             }
         } else {
-            // article.css("display", "none");
-            // this.hiddenCount++;
+            if (advControls.hide) {
+                if (advControls.showIfHot && (article.isArticleHot()
+                    || article.getPopularity() >= advControls.minPopularity)) {
+                    if (advControls.keepUnread && advControls.markAsReadVisible) {
+                        this.articlesToMarkAsRead.push(article);
+                    }
+                } else {
+                    article.css("display", "none");
+                    this.hiddenCount++;
+                }
+            }
         }
 
         this.articlesCount++;
@@ -91,51 +112,135 @@ export class ArticleManager {
 
     checkLastAddedArticle(sub: Subscription) {
         if (this.articlesCount == this.getCurrentUnreadCount()) {
+            if (this.lastReadArticleGroup.length > 0) {
+                var lastReadArticle: Article;
+                if (this.isOldestFirst()) {
+                    lastReadArticle = this.lastReadArticleGroup[this.lastReadArticleGroup.length - 1];
+                } else {
+                    lastReadArticle = this.lastReadArticleGroup[0];
+                }
+                if (lastReadArticle != null) {
+                    this.putWindow(ext.lastReadEntryId, lastReadArticle.getEntryId());
+                }
+            }
+            if (this.articlesToMarkAsRead.length > 0) {
+                var ids = this.articlesToMarkAsRead.map<string>((article) => {
+                    return article.getEntryId();
+                })
+                this.putWindow(ext.articlesToMarkAsReadId, ids);
+            }
             if (sub.isSortingEnabled()) {
                 this.sortArticles();
             }
-            $(ext.unreadCountSelector).append("<span class=" + this.hiddingInfoClass + ">(hidden: " + this.hiddenCount + ")</span>");
-            var lastReadEntryId = null;
-            if (this.lastReadArticle != null) {
-                lastReadEntryId = $(this.lastReadArticle).attr(ext.articleEntryIdAttribute);
+            if (sub.getAdvancedControlsReceivedPeriod().keepUnread) {
+                this.putWindow(ext.keepNewArticlesUnreadId, true);
             }
-            window["eval"]("window." + ext.lastReadEntryId + " = '" + lastReadEntryId + "';");
+
+            $(ext.unreadCountSelector).append("<span class=" + this.hiddingInfoClass + ">(hidden: " + this.hiddenCount + ")</span>");
         }
     }
 
     sortArticles() {
         var sortingType = this.getCurrentSub().getSortingType();
-        var articlesArray: Node[] = $(ext.articleSelector).toArray();
-        articlesArray.sort((a: Node, b: Node) => {
+        var articlesArray: Article[] = $.map<Node, Article>($(ext.articleSelector).toArray(), ((node) => {
+            return new Article(node);
+        }));
+        articlesArray.sort((a: Article, b: Article) => {
             if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
-                var titleA = this.getTitle(a);
-                var titleB = this.getTitle(b);
+                var titleA = a.getTitle();
+                var titleB = b.getTitle();
                 var sorting = titleA === titleB ? 0 : (titleA > titleB ? 1 : -1);
                 if (sortingType == SortingType.TitleDesc) {
                     sorting = sorting * -1;
                 }
                 return sorting;
             } else {
-                var popA = this.getPopularity(a);
-                var popB = this.getPopularity(b);
+                var popA = a.getPopularity();
+                var popB = b.getPopularity();
                 var i = ((sortingType == SortingType.PopularityAsc) ? 1 : -1);
                 return (popA - popB) * i;
             }
         });
 
-        var parent = $(articlesArray[0]).parent();
-        parent.empty();
+        var articlesContainer = $(ext.articleSelector).first().parent();
+        articlesContainer.empty();
         articlesArray.forEach((article) => {
-            parent.append($(article));
+            articlesContainer.append(article.get());
         });
     }
 
-    getTitle(article: Node): string {
-        return $(article).attr(ext.articleTitleAttribute).toLowerCase();
+    isOldestFirst(): boolean {
+        var firstPublishAge = new Article($(ext.articleSelector).first().get(0)).getPublishAge();
+        var lastPublishAge = new Article($(ext.articleSelector).last().get(0)).getPublishAge();
+        return firstPublishAge < lastPublishAge;
     }
 
-    getPopularity(article: Node): number {
-        var popularityStr = $(article).find(ext.popularitySelector).text().trim();
+    putWindow(id: string, value: any) {
+        this.eval("window.FFnS['" + id + "'] = " + JSON.stringify(value) + ";");
+    }
+
+    /* No JQuery */
+    overrideMarkAsRead() {
+        var pagesPkg = window["devhd"].pkg("pages");
+        function getFromWindow(id: string) {
+            return window["FFnS"][id];
+        }
+        function markEntryAsRead(id, thisArg) {
+            pagesPkg.BasePage.prototype.buryEntry.call(thisArg, id);
+        }
+        function getLastReadEntry(oldLastEntryObject, thisArg) {
+            if (getFromWindow(ext.keepNewArticlesUnreadId) == null) {
+                return oldLastEntryObject;
+            }
+            var idsToMarkAsRead: string[] = getFromWindow(ext.articlesToMarkAsReadId);
+            if (idsToMarkAsRead != null) {
+                idsToMarkAsRead.forEach(id => {
+                    markEntryAsRead(id, thisArg)
+                });
+            }
+            var lastReadEntryId = getFromWindow(ext.lastReadEntryId);
+            if (lastReadEntryId == null) {
+                return null;
+            }
+            return { lastReadEntryId: lastReadEntryId };
+        }
+
+        var feedlyListPagePrototype = pagesPkg.ListPage.prototype;
+        var oldMarkAllAsRead: Function = feedlyListPagePrototype.markAllSubscriptionEntriesAsRead;
+        feedlyListPagePrototype.markAllSubscriptionEntriesAsRead = function (subURL: string, b, oldLastEntryObject, d) {
+            var lastEntryObject = getLastReadEntry(oldLastEntryObject, this);
+            if (lastEntryObject != null) {
+                oldMarkAllAsRead.call(this, subURL, b, lastEntryObject, d);
+            }
+        }
+        var oldMarkCategoryAsRead: Function = feedlyListPagePrototype.markCategoryAsRead;
+        feedlyListPagePrototype.markCategoryAsRead = function (categoryName: string, oldLastEntryObject, c, d) {
+            var lastEntryObject = getLastReadEntry(oldLastEntryObject, this);
+            if (lastEntryObject != null) {
+                oldMarkCategoryAsRead.call(this, categoryName, lastEntryObject, c, d);
+            }
+        }
+    }
+
+}
+
+class Article {
+    private article: JQuery;
+
+    constructor(article: Node) {
+        this.article = $(article);
+    }
+
+    get(): JQuery {
+        return this.article;
+    }
+
+    getTitle(): string {
+        return this.article.attr(ext.articleTitleAttribute).toLowerCase();
+    }
+
+    getPopularity(): number {
+        var popularityStr = this.article.find(ext.popularitySelector).text().trim();
         popularityStr = popularityStr.replace("+", "");
         if (popularityStr.indexOf("K") > -1) {
             popularityStr = popularityStr.replace("K", "");
@@ -148,48 +253,23 @@ export class ArticleManager {
         return popularityNumber;
     }
 
-    getPublishAge(article: JQuery) : number {
-        var ageStr = article.find(ext.publishAgeSelector).text().trim();
-        var age = 1;
-        if (ageStr.indexOf("h") > -1) {
-            ageStr = ageStr.replace("h", "");
-            age = Number(ageStr);
-        } else if (ageStr.indexOf("d") > -1) {
-            ageStr = ageStr.replace("d", "");
-            age = Number(ageStr);
-            age *= 24;
-        }
-        return age;
+    getPublishAge(): number {
+        var ageTitle = this.article.find(ext.publishAgeSpanSelector).attr("title");
+        var publishDate = ageTitle.split("--")[1].trim().replace("Received:", "").trim();
+        var publishDateMs = Date.parse(publishDate);
+        return publishDateMs;
     }
 
-    overrideMarkAsRead() {
-        function getLastReadEntryId() : string {
-            return window[ext.lastReadEntryId];
-        }
-
-        var feedlyListPagePrototype = window["devhd"].pkg("pages").ListPage.prototype;
-        var oldMarkAllAsRead: Function = feedlyListPagePrototype.markAllSubscriptionEntriesAsRead;
-        feedlyListPagePrototype.markAllSubscriptionEntriesAsRead = function (subURL: string, b, lastEntryObject, d) {
-            console.log("oldMarkAllAsRead: " + oldMarkAllAsRead);
-            console.log("subURL: " + subURL);
-            console.log("lastEntryObject: " + JSON.stringify(lastEntryObject));
-            console.log("lastReadEntryId: " + lastEntryObject["lastReadEntryId"]);
-            
-            lastEntryObject.lastReadEntryId = getLastReadEntryId();
-            console.log("new lastReadEntryId: " + lastEntryObject["lastReadEntryId"]);
-            // oldMarkAllAsRead.call(this, subURL, b, lastEntryObject, d);
-        }
-        var oldMarkCategoryAsRead: Function = feedlyListPagePrototype.markCategoryAsRead;
-        feedlyListPagePrototype.markCategoryAsRead = function (categoryName: string, lastEntryObject, c, d) {
-            console.log("oldMarkCategoryAsRead: " + oldMarkCategoryAsRead);
-            console.log("categoryName: " + categoryName);
-            console.log("lastEntryObject: " + JSON.stringify(lastEntryObject));
-            console.log("lastReadEntryId: " + lastEntryObject["lastReadEntryId"]);
-
-            lastEntryObject.lastReadEntryId = getLastReadEntryId();
-            console.log("new lastReadEntryId: " + lastEntryObject["lastReadEntryId"]);
-            // oldMarkCategoryAsRead.call(this, categoryName, lastEntryObject, c, d);
-        }
+    isArticleHot(): boolean {
+        var span = this.article.find(ext.popularitySelector);
+        return span.hasClass("hot") || span.hasClass("onfire");
     }
 
+    getEntryId(): string {
+        return this.article.attr(ext.articleEntryIdAttribute);
+    }
+
+    css(propertyName: string, value?: string | number) {
+        this.article.css(propertyName, value);
+    }
 }

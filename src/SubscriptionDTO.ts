@@ -23,4 +23,5 @@ export class AdvancedControlsReceivedPeriod {
     hide = false;
     showIfHot = false;
     minPopularity = 200;
+    markAsReadVisible = false;
 }

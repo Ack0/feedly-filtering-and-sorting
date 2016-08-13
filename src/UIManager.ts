@@ -28,7 +28,7 @@ export class UIManager {
         {
             type: HTMLElementType.CheckBox,
             ids: ["FilteringEnabled", "RestrictingEnabled", "SortingEnabled",
-                "KeepUnread_AdvancedControlsReceivedPeriod", "Hide_AdvancedControlsReceivedPeriod", "ShowIfHot_AdvancedControlsReceivedPeriod"]
+                "KeepUnread_AdvancedControlsReceivedPeriod", "Hide_AdvancedControlsReceivedPeriod", "ShowIfHot_AdvancedControlsReceivedPeriod", "MarkAsReadVisible_AdvancedControlsReceivedPeriod"]
         },
         {
             type: HTMLElementType.NumberInput, ids: ["MinPopularity_AdvancedControlsReceivedPeriod"]
@@ -48,10 +48,6 @@ export class UIManager {
         this.registerSettings();
         this.updatePage();
         this.initSettingsCallbacks();
-
-        //var evalFunc = window["eval"];
-        //evalFunc("(" + this.articleManager.overrideMarkAsRead.toString() + ")();");
-        //evalFunc("window.ext = (" + JSON.stringify(ext).replace(/\s+/g, ' ') + ");");
     }
 
     updatePage() {
@@ -163,9 +159,10 @@ export class UIManager {
 
     initShowSettingsBtns() {
         var this_ = this;
-        $(ext.settingsBtnPredecessorSelector).each(function (i, element) {
+        NodeCreationObserver.onCreation(ext.settingsBtnPredecessorSelector, (element) => {
             var clone = $(element).clone();
             $(clone).attr('id', this_.getBtnId(element.id));
+            $(clone).removeAttr('title');
             $(clone).attr('src', ext.filterIconLink);
             $(clone).attr('alt', 'icon');
             $(clone).attr('data-page-action', '');
@@ -183,17 +180,15 @@ export class UIManager {
         });
         this.htmlSubscriptionManager.registerSettings(
             ["Hours_AdvancedControlsReceivedPeriod", "Days_AdvancedControlsReceivedPeriod"],
-            HTMLElementType.NumberInput, false, {
+            HTMLElementType.NumberInput, {
                 update: (subscriptionSetting: HTMLSubscriptionSetting) => {
                     var advancedControlsReceivedPeriod = subscriptionSetting.manager.subscription.getAdvancedControlsReceivedPeriod();
                     var maxHours = advancedControlsReceivedPeriod.maxHours;
                     var advancedPeriodHours = maxHours % 24;
                     var advancedPeriodDays = Math.floor(maxHours / 24);
                     if (subscriptionSetting.id.indexOf("Hours") != -1) {
-                        console.log("Hours: " + advancedPeriodHours);
                         $id(subscriptionSetting.htmlId).val(advancedPeriodHours);
                     } else {
-                        console.log("Days: " + advancedPeriodDays)
                         $id(subscriptionSetting.htmlId).val(advancedPeriodDays);
                     }
                 }
@@ -323,14 +318,6 @@ export class UIManager {
             this.subscriptionManager.importKeywords(selectedURL);
             this.updateMenu();
         }
-    }
-
-    public isChecked(input: JQuery): boolean {
-        return input.is(':checked');
-    }
-
-    public setChecked(htmlId: string, checked: boolean) {
-        $id(htmlId).prop('checked', checked);
     }
 
     public getHTMLId(id: string) {

@@ -2,7 +2,7 @@
 
 import {UIManager} from "./UIManager"
 import {HTMLElementType} from "./DataTypes"
-import {$id} from "./Utils";
+import {$id, setRadioChecked, isRadioChecked} from "./Utils";
 
 export interface HTMLSubscriptionSettingConfig {
     update: (subscriptionSetting: HTMLSubscriptionSetting) => void;
@@ -18,9 +18,7 @@ export class HTMLSubscriptionManager {
     getChangeCallback(setting: HTMLSubscriptionSetting): Function {
         return function () {
             setting.manager.subscription["set" + setting.id](setting.config.getHTMLValue(setting));
-            if (setting.refreshFilteringAndSorting) {
-                setting.manager.refreshFilteringAndSorting();
-            }
+            setting.manager.refreshFilteringAndSorting();
         }
     }
 
@@ -43,11 +41,11 @@ export class HTMLSubscriptionManager {
                 $id(subscriptionSetting.htmlId).change(this.getChangeCallback(subscriptionSetting));
             },
             getHTMLValue: (subscriptionSetting) => {
-                return this.manager.isChecked($id(subscriptionSetting.htmlId));
+                return isRadioChecked($id(subscriptionSetting.htmlId));
             },
             update: (subscriptionSetting) => {
                 var value = this.manager.subscription["is" + subscriptionSetting.id]();
-                this.manager.setChecked(subscriptionSetting.htmlId, value);
+                setRadioChecked(subscriptionSetting.htmlId, value);
             }
         };
         this.configByElementType[HTMLElementType.NumberInput] = {
@@ -64,13 +62,13 @@ export class HTMLSubscriptionManager {
         };
     }
 
-    registerSettings(ids: string[], type: HTMLElementType, refreshFilteringAndSorting?: boolean, subscriptionSettingConfig?: HTMLSubscriptionSettingConfig) {
-        this.addSettings(ids, this.configByElementType[type], refreshFilteringAndSorting, subscriptionSettingConfig);
+    registerSettings(ids: string[], type: HTMLElementType, subscriptionSettingConfig?: HTMLSubscriptionSettingConfig) {
+        this.addSettings(ids, this.configByElementType[type], subscriptionSettingConfig);
     }
 
-    addSettings(ids: string[], config: HTMLSubscriptionSettingConfig, refreshFilteringAndSorting?: boolean, subscriptionSettingConfig?: HTMLSubscriptionSettingConfig) {
+    addSettings(ids: string[], config: HTMLSubscriptionSettingConfig, subscriptionSettingConfig?: HTMLSubscriptionSettingConfig) {
         ids.forEach(id => {
-            var setting = new HTMLSubscriptionSetting(this.manager, id, config, refreshFilteringAndSorting, subscriptionSettingConfig);
+            var setting = new HTMLSubscriptionSetting(this.manager, id, config, subscriptionSettingConfig);
             this.subscriptionSettings.push(setting);
         });
     }
@@ -92,14 +90,12 @@ export class HTMLSubscriptionSetting {
     id: string;
     htmlId: string;
     config: HTMLSubscriptionSettingConfig;
-    refreshFilteringAndSorting: boolean;
     manager: UIManager;
 
-    constructor(manager: UIManager, id: string, config: HTMLSubscriptionSettingConfig, refreshFilteringAndSorting?: boolean, subscriptionSettingConfig?: HTMLSubscriptionSettingConfig) {
+    constructor(manager: UIManager, id: string, config: HTMLSubscriptionSettingConfig, subscriptionSettingConfig?: HTMLSubscriptionSettingConfig) {
         this.manager = manager;
         this.id = id;
         this.htmlId = manager.getHTMLId(id);
-        this.refreshFilteringAndSorting = refreshFilteringAndSorting == null ? true : refreshFilteringAndSorting;
         var getHTMLValue, update;
         if (subscriptionSettingConfig != null) {
             getHTMLValue = subscriptionSettingConfig.getHTMLValue;
