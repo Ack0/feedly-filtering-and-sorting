@@ -10,7 +10,7 @@
 // @require     http://code.jquery.com/jquery.min.js
 // @require     https://raw.githubusercontent.com/soufianesakhi/node-creation-observer-js/master/release/node-creation-observer-latest.js
 // @include     *://feedly.com/*
-// @version     1.1.0
+// @version     1.1.1
 // @grant       GM_setValue
 // @grant       GM_getValue
 // @grant       GM_listValues
@@ -274,6 +274,9 @@ var SubscriptionDAO = (function () {
     };
     SubscriptionDAO.prototype.clone = function (dtoToClone, cloneUrl) {
         var clone = new SubscriptionDTO(cloneUrl);
+        if (dtoToClone == null) {
+            return clone;
+        }
         if (dtoToClone.filteringEnabled != null)
             clone.filteringEnabled = dtoToClone.filteringEnabled;
         if (dtoToClone.restrictingEnabled != null)
@@ -290,10 +293,10 @@ var SubscriptionDAO = (function () {
     };
     SubscriptionDAO.prototype.cloneAdvancedControlsReceivedPeriod = function (dtoToClone) {
         var advCtrols = new AdvancedControlsReceivedPeriod();
-        if (dtoToClone == null) {
-            advCtrols;
-        }
         var advCtrolsToClone = dtoToClone.advancedControlsReceivedPeriod;
+        if (advCtrolsToClone == null) {
+            return advCtrols;
+        }
         if (advCtrolsToClone.maxHours != null)
             advCtrols.maxHours = advCtrolsToClone.maxHours;
         if (advCtrolsToClone.keepUnread != null)
