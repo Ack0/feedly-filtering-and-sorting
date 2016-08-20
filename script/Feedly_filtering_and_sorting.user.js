@@ -10,7 +10,7 @@
 // @require     http://code.jquery.com/jquery.min.js
 // @require     https://raw.githubusercontent.com/soufianesakhi/node-creation-observer-js/master/release/node-creation-observer-latest.js
 // @include     *://feedly.com/*
-// @version     1.1.1
+// @version     1.1.2
 // @grant       GM_setValue
 // @grant       GM_getValue
 // @grant       GM_listValues
@@ -598,9 +598,6 @@ var Article = (function () {
             popularityStr += "000";
         }
         var popularityNumber = Number(popularityStr);
-        if (popularityNumber < 100) {
-            popularityNumber = 1;
-        }
         return popularityNumber;
     };
     Article.prototype.getPublishAge = function () {

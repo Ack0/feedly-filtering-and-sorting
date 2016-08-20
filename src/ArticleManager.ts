@@ -247,9 +247,6 @@ class Article {
             popularityStr += "000";
         }
         var popularityNumber = Number(popularityStr);
-        if (popularityNumber < 100) {
-            popularityNumber = 1;
-        }
         return popularityNumber;
     }
 
