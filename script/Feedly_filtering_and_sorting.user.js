@@ -10,7 +10,7 @@
 // @require     http://code.jquery.com/jquery.min.js
 // @require     https://raw.githubusercontent.com/soufianesakhi/node-creation-observer-js/master/release/node-creation-observer-latest.js
 // @include     *://feedly.com/*
-// @version     1.1.2
+// @version     1.2.2
 // @grant       GM_setValue
 // @grant       GM_getValue
 // @grant       GM_listValues
@@ -441,32 +441,39 @@ var ArticleManager = (function () {
             article.css("display", "");
         }
         var advControls = sub.getAdvancedControlsReceivedPeriod();
-        var threshold = Date.now() - advControls.maxHours * 3600 * 1000;
-        var publishAge = article.getPublishAge();
-        if (publishAge <= threshold) {
-            if (advControls.keepUnread && (this.lastReadArticleAge == -1 ||
-                publishAge >= this.lastReadArticleAge)) {
-                if (publishAge != this.lastReadArticleAge) {
-                    this.lastReadArticleGroup = [article];
-                }
-                else {
-                    this.lastReadArticleGroup.push(article);
-                }
-                this.lastReadArticleAge = publishAge;
-            }
-        }
-        else {
-            if (advControls.hide) {
-                if (advControls.showIfHot && (article.isArticleHot()
-                    || article.getPopularity() >= advControls.minPopularity)) {
-                    if (advControls.keepUnread && advControls.markAsReadVisible) {
-                        this.articlesToMarkAsRead.push(article);
+        if (advControls.keepUnread || advControls.hide) {
+            try {
+                var threshold = Date.now() - advControls.maxHours * 3600 * 1000;
+                var publishAge = article.getPublishAge();
+                if (publishAge <= threshold) {
+                    if (advControls.keepUnread && (this.lastReadArticleAge == -1 ||
+                        publishAge >= this.lastReadArticleAge)) {
+                        if (publishAge != this.lastReadArticleAge) {
+                            this.lastReadArticleGroup = [article];
+                        }
+                        else {
+                            this.lastReadArticleGroup.push(article);
+                        }
+                        this.lastReadArticleAge = publishAge;
                     }
                 }
                 else {
-                    article.css("display", "none");
-                    this.hiddenCount++;
+                    if (advControls.hide) {
+                        if (advControls.showIfHot && (article.isArticleHot()
+                            || article.getPopularity() >= advControls.minPopularity)) {
+                            if (advControls.keepUnread && advControls.markAsReadVisible) {
+                                this.articlesToMarkAsRead.push(article);
+                            }
+                        }
+                        else {
+                            article.css("display", "none");
+                            this.hiddenCount++;
+                        }
+                    }
                 }
+            }
+            catch (err) {
+                console.log(err);
             }
         }
         this.articlesCount++;
@@ -530,9 +537,15 @@ var ArticleManager = (function () {
         });
     };
     ArticleManager.prototype.isOldestFirst = function () {
-        var firstPublishAge = new Article($(ext.articleSelector).first().get(0)).getPublishAge();
-        var lastPublishAge = new Article($(ext.articleSelector).last().get(0)).getPublishAge();
-        return firstPublishAge < lastPublishAge;
+        try {
+            var firstPublishAge = new Article($(ext.articleSelector).first().get(0)).getPublishAge();
+            var lastPublishAge = new Article($(ext.articleSelector).last().get(0)).getPublishAge();
+            return firstPublishAge < lastPublishAge;
+        }
+        catch (err) {
+            console.log(err);
+            return false;
+        }
     };
     ArticleManager.prototype.putWindow = function (id, value) {
         this.eval("window.FFnS['" + id + "'] = " + JSON.stringify(value) + ";");
@@ -620,11 +633,11 @@ var Article = (function () {
 }());
 
 var templates = {
-    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <div class='FFnS_settings'> <span class='FFnS_settings_header'>General settings: </span> <span class='FFnS_settings_span tooltip'> Auto load all unread articles <span class='tooltiptext'>Not applied if there are no unread articles</span> </span> <input id='FFnS_autoLoadAllArticles' type='checkbox'> <span class='FFnS_settings_span tooltip'> Always use global settings <span class='tooltiptext'>Use the same filtering and sorting settings for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span> </span> <input id='FFnS_globalSettingsEnabled' type='checkbox'> </div> <div class='FFnS_settings'> <span id='FFnS_subscription_title' class='FFnS_settings_header'></span> <span> <span class='FFnS_settings_span tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_FilteringEnabled' type='checkbox'> </span> <span> <span class='FFnS_settings_span tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_RestrictingEnabled' type='checkbox'> </span> <span> <span class='FFnS_settings_span'>Sorting enabled</span> <input id='FFnS_SortingEnabled' type='checkbox'> <select id='FFnS_SortingType' class='FFnS_input'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li class=''> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li class=''> <a href='#FFnS_tab_AdvancedControls'>Advanced controls</a> </li> <li class=''> <a href='#FFnS_tab_ImportMenu'>Import settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_AdvancedControls' class='FFnS_Tab_Menu'> <div id='FFnS_MaxPeriod_Infos'> <span class='FFnS_settings_span'>Articles published less than</span> <input id='FFnS_Hours_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0' max='23'> <span class='FFnS_settings_span'>hours and</span> <input id='FFnS_Days_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0'> <span class='FFnS_settings_span'>days</span> <span class='FFnS_settings_span'>ago should be:</span> </div> <span>Kept unread</span> <input id='FFnS_KeepUnread_AdvancedControlsReceivedPeriod' type='checkbox'> <span>Hidden</span> <input id='FFnS_Hide_AdvancedControlsReceivedPeriod' type='checkbox'> <span>Visible if hot or popularity superior to:</span> <input id='FFnS_MinPopularity_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0'> <input id='FFnS_ShowIfHot_AdvancedControlsReceivedPeriod' type='checkbox'> <span>Marked as read if visible:</span> <input id='FFnS_MarkAsReadVisible_AdvancedControlsReceivedPeriod' type='checkbox'> </div> <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span class='FFnS_settings_span'>Import settings from url: </span> <select id='FFnS_ImportMenu_SubscriptionSelect' class='FFnS_input'> {{ImportMenu.SubscriptionOptions}} </select> <div><button id='FFnS_ImportMenu_Submit'>Import</button></div> </div> </div> </div> </div> </div>",
+    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <fieldset><legend>General settings</legend> <span class='setting_group'> <span class='tooltip'> Auto load all unread articles <span class='tooltiptext'>Not applied if there are no unread articles</span> </span> <input id='FFnS_autoLoadAllArticles' type='checkbox'> </span> <span class='setting_group'> <span class='tooltip'> Always use global settings <span class='tooltiptext'>Use the same filtering and sorting settings for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span> </span> <input id='FFnS_globalSettingsEnabled' type='checkbox'> </span> </fieldset> <fieldset><legend><span id='FFnS_subscription_title'></span></legend> <span class='setting_group'> <span class='tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_FilteringEnabled' type='checkbox'> </span> <span class='setting_group'> <span class='tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_RestrictingEnabled' type='checkbox'> </span> <span class='setting_group'> <span>Sorting enabled</span> <input id='FFnS_SortingEnabled' type='checkbox'> <select id='FFnS_SortingType' class='FFnS_input'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li> <a href='#FFnS_tab_AdvancedControls'>Advanced controls</a> </li> <li> <a href='#FFnS_tab_ImportMenu'>Import settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_AdvancedControls' class='FFnS_Tab_Menu'> <fieldset><legend>Recently published articles</legend> <div id='FFnS_MaxPeriod_Infos'> <span>Articles published less than</span> <input id='FFnS_Hours_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0' max='23'> <span>hours and</span> <input id='FFnS_Days_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0'> <span>days</span> <span>ago should be:</span> </div> <span class='setting_group'> <span>Kept unread</span> <input id='FFnS_KeepUnread_AdvancedControlsReceivedPeriod' type='checkbox'> </span> <span class='setting_group'> <span>Hidden</span> <input id='FFnS_Hide_AdvancedControlsReceivedPeriod' type='checkbox'> </span> <span class='setting_group'> <span>Visible if hot or popularity superior to:</span> <input id='FFnS_MinPopularity_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0' step='100'> <input id='FFnS_ShowIfHot_AdvancedControlsReceivedPeriod' type='checkbox'> </span> <span class='setting_group'> <span>Marked as read if visible:</span> <input id='FFnS_MarkAsReadVisible_AdvancedControlsReceivedPeriod' type='checkbox'> </span> </fieldset> </div> <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span>From an other subscription: </span> <select id='FFnS_ImportMenu_SubscriptionSelect' class='FFnS_input'> {{ImportMenu.SubscriptionOptions}} </select> <div><button id='FFnS_ImportMenu_Submit'>Import</button></div> </div> </div> </fieldset> </div> </div>",
     "filteringListHTML": "<div id='{{FilteringTypeTabId}}' class='FFnS_Tab_Menu'> <input id='{{inputId}}' class='FFnS_input' size='10' type='text'> <span id='{{plusBtnId}}'> <img src='{{plusIconLink}}' class='FFnS_icon' /> </span> <span id='{{filetringKeywordsId}}'></span> <span id='{{eraseBtnId}}'> <img src='{{eraseIconLink}}' class='FFnS_icon' /> </span> </div>",
     "filteringKeywordHTML": "<button id='{{keywordId}}' type='button' class='FFnS_keyword'>{{keyword}}</button>",
     "optionHTML": "<option value='{{value}}'>{{value}}</option>",
-    "styleCSS": "#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 400px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } .FFnS_settings + .FFnS_settings { margin-top: 1%; } .FFnS_settings > :not(input):not(:first-child), #FFnS_tab_AdvancedControls > :not(input):not(:first-child) { margin-left: 2%; } .FFnS_settings_header { color: #333690; } input { vertical-align: middle; } .FFnS_settings select { margin-left: 2% } .FFnS_input { font-size:12px; } #FFnS_tabs_menu { height: 30px; clear: both; margin-top: 1%; margin-bottom: 0%; padding: 0px; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_Tab_Menu { display: none; width: 100%; max-height: 340px; overflow-y: auto; overflow-x: hidden; } .FFnS_settings_span { display: inline; vertical-align: middle; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; } .tooltip .tooltiptext { visibility: hidden; width: 120px; background-color: black; color: #fff; text-align: center; padding: 5px; border-radius: 6px; position: absolute; z-index: 1; } .tooltip:hover .tooltiptext { visibility: visible; } #FFnS_CloseSettingsBtn { float:right; width: 24px; height: 24px; } #FFnS_ImportMenu_Submit { margin-top: 1%; } #FFnS_MaxPeriod_Infos > input[type=number]{ width: 5%; margin-left: 1%; margin-right: 1%; } #FFnS_AdvancedPeriod_minPopularity { width: 6%; } #FFnS_MaxPeriod_Infos { margin: 1% 0 2% 0; }"
+    "styleCSS": "#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 400px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } .FFnS_input { font-size:12px; } #FFnS_tabs_menu { height: 30px; clear: both; margin-top: 1%; margin-bottom: 0%; padding: 0px; text-align: center; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_Tab_Menu { display: none; width: 100%; max-height: 340px; overflow-y: auto; overflow-x: hidden; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; } .tooltip .tooltiptext { visibility: hidden; width: 120px; background-color: black; color: #fff; text-align: center; padding: 5px; border-radius: 6px; position: absolute; z-index: 1; white-space: normal; } .tooltip:hover .tooltiptext { visibility: visible; } #FFnS_CloseSettingsBtn { float:right; width: 24px; height: 24px; } #FFnS_ImportMenu_Submit { margin-top: 1%; } #FFnS_MaxPeriod_Infos > input[type=number]{ width: 30px; margin-left: 1%; margin-right: 1%; } #FFnS_MinPopularity_AdvancedControlsReceivedPeriod { width: 45px; } #FFnS_MaxPeriod_Infos { margin: 1% 0 2% 0; } .setting_group { white-space: nowrap; margin-right: 2%; } fieldset { border-color: #333690; border-style: sold; } legend { color: #333690; font-weight: bold; } fieldset + fieldset { margin-top: 1%; } fieldset select { margin-left: 2% } input { vertical-align: middle; } "
 };
 
 var UIManager = (function () {
@@ -649,20 +662,30 @@ var UIManager = (function () {
         this.closeBtnId = this.getHTMLId("CloseSettingsBtn");
     }
     UIManager.prototype.init = function () {
-        this.subscriptionManager = new SubscriptionManager();
-        this.articleManager = new ArticleManager(this.subscriptionManager);
-        this.htmlSubscriptionManager = new HTMLSubscriptionManager(this);
-        this.autoLoadAllArticlesCB = new GlobalSettingsCheckBox("autoLoadAllArticles", this, false);
-        this.globalSettingsEnabledCB = new GlobalSettingsCheckBox("globalSettingsEnabled", this);
-        this.initUI();
-        this.registerSettings();
-        this.updatePage();
-        this.initSettingsCallbacks();
+        try {
+            this.subscriptionManager = new SubscriptionManager();
+            this.articleManager = new ArticleManager(this.subscriptionManager);
+            this.htmlSubscriptionManager = new HTMLSubscriptionManager(this);
+            this.autoLoadAllArticlesCB = new GlobalSettingsCheckBox("autoLoadAllArticles", this, false);
+            this.globalSettingsEnabledCB = new GlobalSettingsCheckBox("globalSettingsEnabled", this);
+            this.initUI();
+            this.registerSettings();
+            this.updatePage();
+            this.initSettingsCallbacks();
+        }
+        catch (err) {
+            console.log(err);
+        }
     };
     UIManager.prototype.updatePage = function () {
-        this.resetPage();
-        this.updateSubscription();
-        this.updateMenu();
+        try {
+            this.resetPage();
+            this.updateSubscription();
+            this.updateMenu();
+        }
+        catch (err) {
+            console.log(err);
+        }
     };
     UIManager.prototype.resetPage = function () {
         this.containsReadArticles = false;
@@ -693,7 +716,7 @@ var UIManager = (function () {
     };
     UIManager.prototype.updateSubscriptionTitle = function (globalSettingsEnabled) {
         var title = globalSettingsEnabled ? "Global" : "Subscription";
-        title += " settings: ";
+        title += " settings";
         $id("FFnS_subscription_title").text(title);
     };
     UIManager.prototype.updateImportOptionsHTML = function () {
@@ -859,12 +882,17 @@ var UIManager = (function () {
         this.setUpKeywordButtonsEvents(type);
     };
     UIManager.prototype.addArticle = function (articleNode) {
-        this.checkReadArticles(articleNode);
-        if (this.containsReadArticles) {
-            return;
+        try {
+            this.checkReadArticles(articleNode);
+            if (this.containsReadArticles) {
+                return;
+            }
+            this.tryAutoLoadAllArticles();
+            this.articleManager.addArticle(articleNode);
         }
-        this.tryAutoLoadAllArticles();
-        this.articleManager.addArticle(articleNode);
+        catch (err) {
+            console.log(err);
+        }
     };
     UIManager.prototype.checkReadArticles = function (articleNode) {
         if (!this.containsReadArticles) {

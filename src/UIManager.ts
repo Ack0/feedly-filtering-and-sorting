@@ -39,21 +39,29 @@ export class UIManager {
     closeBtnId = this.getHTMLId("CloseSettingsBtn");
 
     init() {
-        this.subscriptionManager = new SubscriptionManager();
-        this.articleManager = new ArticleManager(this.subscriptionManager);
-        this.htmlSubscriptionManager = new HTMLSubscriptionManager(this);
-        this.autoLoadAllArticlesCB = new GlobalSettingsCheckBox("autoLoadAllArticles", this, false);
-        this.globalSettingsEnabledCB = new GlobalSettingsCheckBox("globalSettingsEnabled", this);
-        this.initUI();
-        this.registerSettings();
-        this.updatePage();
-        this.initSettingsCallbacks();
+        try {
+            this.subscriptionManager = new SubscriptionManager();
+            this.articleManager = new ArticleManager(this.subscriptionManager);
+            this.htmlSubscriptionManager = new HTMLSubscriptionManager(this);
+            this.autoLoadAllArticlesCB = new GlobalSettingsCheckBox("autoLoadAllArticles", this, false);
+            this.globalSettingsEnabledCB = new GlobalSettingsCheckBox("globalSettingsEnabled", this);
+            this.initUI();
+            this.registerSettings();
+            this.updatePage();
+            this.initSettingsCallbacks();
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     updatePage() {
-        this.resetPage();
-        this.updateSubscription();
-        this.updateMenu();
+        try {
+            this.resetPage();
+            this.updateSubscription();
+            this.updateMenu();
+        } catch (err) {
+            console.log(err);
+        }
     }
 
     resetPage() {
@@ -90,7 +98,7 @@ export class UIManager {
 
     updateSubscriptionTitle(globalSettingsEnabled: boolean) {
         var title = globalSettingsEnabled ? "Global" : "Subscription";
-        title += " settings: ";
+        title += " settings";
         $id("FFnS_subscription_title").text(title);
     }
 
@@ -281,12 +289,16 @@ export class UIManager {
     }
 
     addArticle(articleNode: Node) {
-        this.checkReadArticles(articleNode);
-        if (this.containsReadArticles) {
-            return;
+        try {
+            this.checkReadArticles(articleNode);
+            if (this.containsReadArticles) {
+                return;
+            }
+            this.tryAutoLoadAllArticles();
+            this.articleManager.addArticle(articleNode);
+        } catch (err) {
+            console.log(err);
         }
-        this.tryAutoLoadAllArticles();
-        this.articleManager.addArticle(articleNode);
     }
 
     checkReadArticles(articleNode: Node) {

@@ -80,29 +80,35 @@ export class ArticleManager {
         }
 
         var advControls = sub.getAdvancedControlsReceivedPeriod();
-        var threshold = Date.now() - advControls.maxHours * 3600 * 1000;
-        var publishAge = article.getPublishAge();
-        if (publishAge <= threshold) {
-            if (advControls.keepUnread && (this.lastReadArticleAge == -1 ||
-                publishAge >= this.lastReadArticleAge)) {
-                if (publishAge != this.lastReadArticleAge) {
-                    this.lastReadArticleGroup = [article]
-                } else {
-                    this.lastReadArticleGroup.push(article);
-                }
-                this.lastReadArticleAge = publishAge;
-            }
-        } else {
-            if (advControls.hide) {
-                if (advControls.showIfHot && (article.isArticleHot()
-                    || article.getPopularity() >= advControls.minPopularity)) {
-                    if (advControls.keepUnread && advControls.markAsReadVisible) {
-                        this.articlesToMarkAsRead.push(article);
+        if (advControls.keepUnread || advControls.hide) {
+            try {
+                var threshold = Date.now() - advControls.maxHours * 3600 * 1000;
+                var publishAge = article.getPublishAge();
+                if (publishAge <= threshold) {
+                    if (advControls.keepUnread && (this.lastReadArticleAge == -1 ||
+                        publishAge >= this.lastReadArticleAge)) {
+                        if (publishAge != this.lastReadArticleAge) {
+                            this.lastReadArticleGroup = [article]
+                        } else {
+                            this.lastReadArticleGroup.push(article);
+                        }
+                        this.lastReadArticleAge = publishAge;
                     }
                 } else {
-                    article.css("display", "none");
-                    this.hiddenCount++;
+                    if (advControls.hide) {
+                        if (advControls.showIfHot && (article.isArticleHot()
+                            || article.getPopularity() >= advControls.minPopularity)) {
+                            if (advControls.keepUnread && advControls.markAsReadVisible) {
+                                this.articlesToMarkAsRead.push(article);
+                            }
+                        } else {
+                            article.css("display", "none");
+                            this.hiddenCount++;
+                        }
+                    }
                 }
+            } catch (err) {
+                console.log(err);
             }
         }
 
@@ -170,9 +176,14 @@ export class ArticleManager {
     }
 
     isOldestFirst(): boolean {
-        var firstPublishAge = new Article($(ext.articleSelector).first().get(0)).getPublishAge();
-        var lastPublishAge = new Article($(ext.articleSelector).last().get(0)).getPublishAge();
-        return firstPublishAge < lastPublishAge;
+        try {
+            var firstPublishAge = new Article($(ext.articleSelector).first().get(0)).getPublishAge();
+            var lastPublishAge = new Article($(ext.articleSelector).last().get(0)).getPublishAge();
+            return firstPublishAge < lastPublishAge;
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
     }
 
     putWindow(id: string, value: any) {

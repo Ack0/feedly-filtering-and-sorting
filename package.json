@@ -1,7 +1,7 @@
 {
   "name": "feedly filtering and sorting",
   "finalName": "Feedly_filtering_and_sorting",
-  "version": "1.1.2",
+  "version": "1.2.2",
   "description": "Enhance the feedly website with advanced filtering and sorting capabilities",
   "main": "src/Main.ts",
   "author": "Soufiane Sakhi",
