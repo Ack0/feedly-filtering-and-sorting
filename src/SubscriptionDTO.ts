@@ -2,11 +2,12 @@ import {FilteringType, SortingType, getFilteringTypes} from "./DataTypes";
 
 export class SubscriptionDTO {
     url: string;
-    filteringEnabled: boolean = false;
-    restrictingEnabled: boolean = false;
-    sortingEnabled: boolean = true;
+    filteringEnabled = false;
+    restrictingEnabled = false;
+    sortingEnabled = true;
     sortingType: SortingType = SortingType.PopularityDesc;
     advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
+    pinHotToTop = false;
     filteringListsByType: { [key: number]: string[]; } = {};
     
     constructor(url: string) {

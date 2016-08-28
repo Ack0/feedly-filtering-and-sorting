@@ -54,7 +54,7 @@
 .FFnS_Tab_Menu {
     display: none;
     width: 100%;
-    max-height: 340px; 
+    max-height: 200px; 
     overflow-y: auto;
     overflow-x: hidden;
 }

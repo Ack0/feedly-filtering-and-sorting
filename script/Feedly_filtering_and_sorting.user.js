@@ -152,6 +152,7 @@ var SubscriptionDTO = (function () {
         this.sortingEnabled = true;
         this.sortingType = SortingType.PopularityDesc;
         this.advancedControlsReceivedPeriod = new AdvancedControlsReceivedPeriod();
+        this.pinHotToTop = false;
         this.filteringListsByType = {};
         this.url = url;
         getFilteringTypes().forEach(function (type) {
@@ -198,6 +199,9 @@ var Subscription = (function () {
     };
     Subscription.prototype.isSortingEnabled = function () {
         return this.dto.sortingEnabled;
+    };
+    Subscription.prototype.isPinHotToTop = function () {
+        return this.dto.pinHotToTop;
     };
     Subscription.prototype.getAdvancedControlsReceivedPeriod = function () {
         return this.dto.advancedControlsReceivedPeriod;
@@ -277,14 +281,12 @@ var SubscriptionDAO = (function () {
         if (dtoToClone == null) {
             return clone;
         }
-        if (dtoToClone.filteringEnabled != null)
-            clone.filteringEnabled = dtoToClone.filteringEnabled;
-        if (dtoToClone.restrictingEnabled != null)
-            clone.restrictingEnabled = dtoToClone.restrictingEnabled;
-        if (dtoToClone.sortingEnabled != null)
-            clone.sortingEnabled = dtoToClone.sortingEnabled;
-        if (dtoToClone.sortingType != null)
-            clone.sortingType = dtoToClone.sortingType;
+        var defDto = this.defaultSubscription != null ? this.defaultSubscription : clone;
+        clone.filteringEnabled = (dtoToClone.filteringEnabled != null) ? dtoToClone.filteringEnabled : defDto.filteringEnabled;
+        clone.restrictingEnabled = (dtoToClone.restrictingEnabled != null) ? dtoToClone.restrictingEnabled : defDto.restrictingEnabled;
+        clone.sortingEnabled = (dtoToClone.sortingEnabled != null) ? dtoToClone.sortingEnabled : defDto.sortingEnabled;
+        clone.sortingType = (dtoToClone.sortingType != null) ? dtoToClone.sortingType : defDto.sortingType;
+        clone.pinHotToTop = (dtoToClone.pinHotToTop != null) ? dtoToClone.pinHotToTop : defDto.pinHotToTop;
         clone.advancedControlsReceivedPeriod = this.cloneAdvancedControlsReceivedPeriod(dtoToClone);
         getFilteringTypes().forEach(function (type) {
             clone.filteringListsByType[type] = dtoToClone.filteringListsByType[type].slice(0);
@@ -297,18 +299,13 @@ var SubscriptionDAO = (function () {
         if (advCtrolsToClone == null) {
             return advCtrols;
         }
-        if (advCtrolsToClone.maxHours != null)
-            advCtrols.maxHours = advCtrolsToClone.maxHours;
-        if (advCtrolsToClone.keepUnread != null)
-            advCtrols.keepUnread = advCtrolsToClone.keepUnread;
-        if (advCtrolsToClone.hide != null)
-            advCtrols.hide = advCtrolsToClone.hide;
-        if (advCtrolsToClone.showIfHot != null)
-            advCtrols.showIfHot = advCtrolsToClone.showIfHot;
-        if (advCtrolsToClone.minPopularity != null)
-            advCtrols.minPopularity = advCtrolsToClone.minPopularity;
-        if (advCtrolsToClone.markAsReadVisible != null)
-            advCtrols.markAsReadVisible = advCtrolsToClone.markAsReadVisible;
+        var defAdvCtrols = this.defaultSubscription != null ? this.defaultSubscription.advancedControlsReceivedPeriod : advCtrols;
+        advCtrols.maxHours = (advCtrolsToClone.maxHours != null) ? advCtrolsToClone.maxHours : defAdvCtrols.maxHours;
+        advCtrols.keepUnread = (advCtrolsToClone.keepUnread != null) ? advCtrolsToClone.keepUnread : defAdvCtrols.keepUnread;
+        advCtrols.hide = (advCtrolsToClone.hide != null) ? advCtrolsToClone.hide : defAdvCtrols.hide;
+        advCtrols.showIfHot = (advCtrolsToClone.showIfHot != null) ? advCtrolsToClone.showIfHot : defAdvCtrols.showIfHot;
+        advCtrols.minPopularity = (advCtrolsToClone.minPopularity != null) ? advCtrolsToClone.minPopularity : defAdvCtrols.minPopularity;
+        advCtrols.markAsReadVisible = (advCtrolsToClone.markAsReadVisible != null) ? advCtrolsToClone.markAsReadVisible : defAdvCtrols.markAsReadVisible;
         return advCtrols;
     };
     SubscriptionDAO.prototype.loadGlobalSettings = function () {
@@ -335,12 +332,10 @@ var SubscriptionDAO = (function () {
 var SubscriptionManager = (function () {
     function SubscriptionManager() {
         this.urlPrefixPattern = new RegExp(ext.urlPrefixPattern, "i");
-        this.currentUnreadCount = 0;
         this.dao = new SubscriptionDAO();
         this.globalSettings = this.dao.loadGlobalSettings();
     }
     SubscriptionManager.prototype.loadSubscription = function (globalSettingsEnabled) {
-        this.currentUnreadCount = 0;
         var subscription;
         if (globalSettingsEnabled) {
             subscription = this.globalSettings;
@@ -363,14 +358,8 @@ var SubscriptionManager = (function () {
         url = url.replace(this.urlPrefixPattern, "");
         return url;
     };
-    SubscriptionManager.prototype.updateUnreadCount = function () {
-        this.currentUnreadCount = $(ext.articleSelector).length;
-    };
     SubscriptionManager.prototype.getCurrentSubscription = function () {
         return this.currentSubscription;
-    };
-    SubscriptionManager.prototype.getCurrentUnreadCount = function () {
-        return this.currentUnreadCount;
     };
     return SubscriptionManager;
 }());
@@ -396,17 +385,17 @@ var ArticleManager = (function () {
         this.lastReadArticleAge = -1;
         this.lastReadArticleGroup = [];
         this.articlesToMarkAsRead = [];
-        $("." + this.hiddingInfoClass).remove();
+        this.clearHiddingInfo();
         this.eval("window.FFnS = ({});");
     };
     ArticleManager.prototype.getCurrentSub = function () {
         return this.subscriptionManager.getCurrentSubscription();
     };
     ArticleManager.prototype.getCurrentUnreadCount = function () {
-        return this.subscriptionManager.getCurrentUnreadCount();
+        return $(ext.articleSelector).length;
     };
-    ArticleManager.prototype.addArticle = function (articleNode) {
-        var article = new Article(articleNode);
+    ArticleManager.prototype.addArticle = function (a) {
+        var article = new Article(a);
         var sub = this.getCurrentSub();
         var title = article.getTitle();
         if (sub.isFilteringEnabled() || sub.isRestrictingEnabled()) {
@@ -459,7 +448,7 @@ var ArticleManager = (function () {
                 }
                 else {
                     if (advControls.hide) {
-                        if (advControls.showIfHot && (article.isArticleHot()
+                        if (advControls.showIfHot && (article.isHot()
                             || article.getPopularity() >= advControls.minPopularity)) {
                             if (advControls.keepUnread && advControls.markAsReadVisible) {
                                 this.articlesToMarkAsRead.push(article);
@@ -505,15 +494,40 @@ var ArticleManager = (function () {
             if (sub.getAdvancedControlsReceivedPeriod().keepUnread) {
                 this.putWindow(ext.keepNewArticlesUnreadId, true);
             }
-            $(ext.unreadCountSelector).append("<span class=" + this.hiddingInfoClass + ">(hidden: " + this.hiddenCount + ")</span>");
+            this.showHiddingInfo();
         }
     };
     ArticleManager.prototype.sortArticles = function () {
-        var sortingType = this.getCurrentSub().getSortingType();
-        var articlesArray = $.map($(ext.articleSelector).toArray(), (function (node) {
-            return new Article(node);
+        var articlesArray = $.map($(ext.articleSelector).toArray(), (function (a) {
+            return new Article(a);
         }));
-        articlesArray.sort(function (a, b) {
+        if (this.getCurrentSub().isPinHotToTop()) {
+            var hotArticles = [];
+            var normalArticles = [];
+            articlesArray.forEach(function (article) {
+                if (article.isHot()) {
+                    hotArticles.push(article);
+                }
+                else {
+                    normalArticles.push(article);
+                }
+            });
+            this.sortArticleArray(hotArticles);
+            this.sortArticleArray(normalArticles);
+            articlesArray = hotArticles.concat(normalArticles);
+        }
+        else {
+            this.sortArticleArray(articlesArray);
+        }
+        var articlesContainer = $(ext.articleSelector).first().parent();
+        articlesContainer.empty();
+        articlesArray.forEach(function (article) {
+            articlesContainer.append(article.get());
+        });
+    };
+    ArticleManager.prototype.sortArticleArray = function (articles) {
+        var sortingType = this.getCurrentSub().getSortingType();
+        articles.sort(function (a, b) {
             if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
                 var titleA = a.getTitle();
                 var titleB = b.getTitle();
@@ -530,11 +544,6 @@ var ArticleManager = (function () {
                 return (popA - popB) * i;
             }
         });
-        var articlesContainer = $(ext.articleSelector).first().parent();
-        articlesContainer.empty();
-        articlesArray.forEach(function (article) {
-            articlesContainer.append(article.get());
-        });
     };
     ArticleManager.prototype.isOldestFirst = function () {
         try {
@@ -546,6 +555,16 @@ var ArticleManager = (function () {
             console.log(err);
             return false;
         }
+    };
+    ArticleManager.prototype.showHiddingInfo = function () {
+        if (this.hiddenCount == 0) {
+            return;
+        }
+        this.clearHiddingInfo();
+        $(ext.unreadCountSelector).after("<span class=" + this.hiddingInfoClass + ">(hidden: " + this.hiddenCount + ")</span>");
+    };
+    ArticleManager.prototype.clearHiddingInfo = function () {
+        $("." + this.hiddingInfoClass).remove();
     };
     ArticleManager.prototype.putWindow = function (id, value) {
         this.eval("window.FFnS['" + id + "'] = " + JSON.stringify(value) + ";");
@@ -619,7 +638,7 @@ var Article = (function () {
         var publishDateMs = Date.parse(publishDate);
         return publishDateMs;
     };
-    Article.prototype.isArticleHot = function () {
+    Article.prototype.isHot = function () {
         var span = this.article.find(ext.popularitySelector);
         return span.hasClass("hot") || span.hasClass("onfire");
     };
@@ -633,11 +652,11 @@ var Article = (function () {
 }());
 
 var templates = {
-    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <fieldset><legend>General settings</legend> <span class='setting_group'> <span class='tooltip'> Auto load all unread articles <span class='tooltiptext'>Not applied if there are no unread articles</span> </span> <input id='FFnS_autoLoadAllArticles' type='checkbox'> </span> <span class='setting_group'> <span class='tooltip'> Always use global settings <span class='tooltiptext'>Use the same filtering and sorting settings for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span> </span> <input id='FFnS_globalSettingsEnabled' type='checkbox'> </span> </fieldset> <fieldset><legend><span id='FFnS_subscription_title'></span></legend> <span class='setting_group'> <span class='tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_FilteringEnabled' type='checkbox'> </span> <span class='setting_group'> <span class='tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_RestrictingEnabled' type='checkbox'> </span> <span class='setting_group'> <span>Sorting enabled</span> <input id='FFnS_SortingEnabled' type='checkbox'> <select id='FFnS_SortingType' class='FFnS_input'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li> <a href='#FFnS_tab_AdvancedControls'>Advanced controls</a> </li> <li> <a href='#FFnS_tab_ImportMenu'>Import settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_AdvancedControls' class='FFnS_Tab_Menu'> <fieldset><legend>Recently published articles</legend> <div id='FFnS_MaxPeriod_Infos'> <span>Articles published less than</span> <input id='FFnS_Hours_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0' max='23'> <span>hours and</span> <input id='FFnS_Days_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0'> <span>days</span> <span>ago should be:</span> </div> <span class='setting_group'> <span>Kept unread</span> <input id='FFnS_KeepUnread_AdvancedControlsReceivedPeriod' type='checkbox'> </span> <span class='setting_group'> <span>Hidden</span> <input id='FFnS_Hide_AdvancedControlsReceivedPeriod' type='checkbox'> </span> <span class='setting_group'> <span>Visible if hot or popularity superior to:</span> <input id='FFnS_MinPopularity_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0' step='100'> <input id='FFnS_ShowIfHot_AdvancedControlsReceivedPeriod' type='checkbox'> </span> <span class='setting_group'> <span>Marked as read if visible:</span> <input id='FFnS_MarkAsReadVisible_AdvancedControlsReceivedPeriod' type='checkbox'> </span> </fieldset> </div> <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span>From an other subscription: </span> <select id='FFnS_ImportMenu_SubscriptionSelect' class='FFnS_input'> {{ImportMenu.SubscriptionOptions}} </select> <div><button id='FFnS_ImportMenu_Submit'>Import</button></div> </div> </div> </fieldset> </div> </div>",
+    "settingsHTML": "<div id='FFnS_settingsDivContainer'> <div id='FFnS_settingsDiv'> <img id='FFnS_CloseSettingsBtn' src='{{closeIconLink}}' class='pageAction requiresLogin'> <fieldset><legend>General settings</legend> <span class='setting_group'> <span class='tooltip'> Auto load all unread articles <span class='tooltiptext'>Not applied if there are no unread articles</span> </span> <input id='FFnS_autoLoadAllArticles' type='checkbox'> </span> <span class='setting_group'> <span class='tooltip'> Always use global settings <span class='tooltiptext'>Use the same filtering and sorting settings for all subscriptions and categories. Uncheck to have specific settings for each subscription/category</span> </span> <input id='FFnS_globalSettingsEnabled' type='checkbox'> </span> </fieldset> <fieldset><legend><span id='FFnS_subscription_title'></span></legend> <span class='setting_group'> <span class='tooltip'> Filtering enabled <span class='tooltiptext'>Hide the articles that contain at least one of the filtering keywords (not applied if empty)</span> </span> <input id='FFnS_FilteringEnabled' type='checkbox'> </span> <span class='setting_group'> <span class='tooltip'> Restricting enabled <span class='tooltiptext'>Show only articles that contain at least one of the restricting keywords (not applied if empty)</span> </span> <input id='FFnS_RestrictingEnabled' type='checkbox'> </span> <span class='setting_group'> <span>Sorting enabled</span> <input id='FFnS_SortingEnabled' type='checkbox'> <select id='FFnS_SortingType' class='FFnS_input'> <option value='{{SortingType.PopularityDesc}}'>Sort by popularity (highest to lowest)</option> <option value='{{SortingType.TitleAsc}}'>Sort by title (a -&gt; z)</option> <option value='{{SortingType.PopularityAsc}}'>Sort by popularity (lowest to highest)</option> <option value='{{SortingType.TitleDesc}}'>Sort by title (z -&gt; a)</option> </select> </span> <ul id='FFnS_tabs_menu'> <li class='current'> <a href='#FFnS_tab_FilteredOut'>Filtering keywords</a> </li> <li> <a href='#FFnS_tab_RestrictedOn'>Restricting keywords</a> </li> <li> <a href='#FFnS_tab_AdvancedControls'>Advanced controls</a> </li> <li> <a href='#FFnS_tab_ImportMenu'>Import settings</a> </li> </ul> <div id='FFnS_tabs_content'> {{FilteringList.Type.FilteredOut}} {{FilteringList.Type.RestrictedOn}} <div id='FFnS_tab_AdvancedControls' class='FFnS_Tab_Menu'> <fieldset><legend>Recently published articles</legend> <div id='FFnS_MaxPeriod_Infos'> <span>Articles published less than</span> <input id='FFnS_Hours_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0' max='23'> <span>hours and</span> <input id='FFnS_Days_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0'> <span>days</span> <span>ago should be:</span> </div> <span class='setting_group'> <span>Kept unread</span> <input id='FFnS_KeepUnread_AdvancedControlsReceivedPeriod' type='checkbox'> </span> <span class='setting_group'> <span>Hidden</span> <input id='FFnS_Hide_AdvancedControlsReceivedPeriod' type='checkbox'> </span> <span class='setting_group'> <span>Visible if hot or popularity superior to:</span> <input id='FFnS_MinPopularity_AdvancedControlsReceivedPeriod' class='FFnS_input' type='number' min='0' step='100'> <input id='FFnS_ShowIfHot_AdvancedControlsReceivedPeriod' type='checkbox'> </span> <span class='setting_group'> <span>Marked as read if visible:</span> <input id='FFnS_MarkAsReadVisible_AdvancedControlsReceivedPeriod' type='checkbox'> </span> </fieldset> <fieldset><legend>Hot articles</legend> <span class='setting_group'> <span>Group hot articles & pin to top</span> <input id='FFnS_PinHotToTop' type='checkbox'> </span> </fieldset> </div> <div id='FFnS_tab_ImportMenu' class='FFnS_Tab_Menu'> <span>From an other subscription: </span> <select id='FFnS_ImportMenu_SubscriptionSelect' class='FFnS_input'> {{ImportMenu.SubscriptionOptions}} </select> <div><button id='FFnS_ImportMenu_Submit'>Import</button></div> </div> </div> </fieldset> </div> </div>",
     "filteringListHTML": "<div id='{{FilteringTypeTabId}}' class='FFnS_Tab_Menu'> <input id='{{inputId}}' class='FFnS_input' size='10' type='text'> <span id='{{plusBtnId}}'> <img src='{{plusIconLink}}' class='FFnS_icon' /> </span> <span id='{{filetringKeywordsId}}'></span> <span id='{{eraseBtnId}}'> <img src='{{eraseIconLink}}' class='FFnS_icon' /> </span> </div>",
     "filteringKeywordHTML": "<button id='{{keywordId}}' type='button' class='FFnS_keyword'>{{keyword}}</button>",
     "optionHTML": "<option value='{{value}}'>{{value}}</option>",
-    "styleCSS": "#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 400px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } .FFnS_input { font-size:12px; } #FFnS_tabs_menu { height: 30px; clear: both; margin-top: 1%; margin-bottom: 0%; padding: 0px; text-align: center; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_Tab_Menu { display: none; width: 100%; max-height: 340px; overflow-y: auto; overflow-x: hidden; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; } .tooltip .tooltiptext { visibility: hidden; width: 120px; background-color: black; color: #fff; text-align: center; padding: 5px; border-radius: 6px; position: absolute; z-index: 1; white-space: normal; } .tooltip:hover .tooltiptext { visibility: visible; } #FFnS_CloseSettingsBtn { float:right; width: 24px; height: 24px; } #FFnS_ImportMenu_Submit { margin-top: 1%; } #FFnS_MaxPeriod_Infos > input[type=number]{ width: 30px; margin-left: 1%; margin-right: 1%; } #FFnS_MinPopularity_AdvancedControlsReceivedPeriod { width: 45px; } #FFnS_MaxPeriod_Infos { margin: 1% 0 2% 0; } .setting_group { white-space: nowrap; margin-right: 2%; } fieldset { border-color: #333690; border-style: sold; } legend { color: #333690; font-weight: bold; } fieldset + fieldset { margin-top: 1%; } fieldset select { margin-left: 2% } input { vertical-align: middle; } "
+    "styleCSS": "#FFnS_settingsDivContainer { display: none; background: rgba(0,0,0,0.9); width: 100%; height: 100%; z-index: 500; top: 0; left: 0; position: fixed; } #FFnS_settingsDiv { max-height: 400px; margin-top: 1%; margin-left: 15%; margin-right: 1%; border-radius: 25px; border: 2px solid #336699; background: #E0F5FF; padding: 2%; opacity: 1; } .FFnS_input { font-size:12px; } #FFnS_tabs_menu { height: 30px; clear: both; margin-top: 1%; margin-bottom: 0%; padding: 0px; text-align: center; } #FFnS_tabs_menu li { height: 30px; line-height: 30px; display: inline-block; border: 1px solid #d4d4d1; } #FFnS_tabs_menu li.current { background-color: #B9E0ED; } #FFnS_tabs_menu li a { padding: 10px; color: #2A687D; } #FFnS_tabs_content { padding: 1%; } .FFnS_Tab_Menu { display: none; width: 100%; max-height: 200px; overflow-y: auto; overflow-x: hidden; } .FFnS_icon { vertical-align: middle; height: 20px; width: 20px; cursor: pointer; } .FFnS_keyword { vertical-align: middle; background-color: #35A5E2; border-radius: 20px; color: #FFF; cursor: pointer; } .tooltip { position: relative; display: inline-block; border-bottom: 1px dotted black; } .tooltip .tooltiptext { visibility: hidden; width: 120px; background-color: black; color: #fff; text-align: center; padding: 5px; border-radius: 6px; position: absolute; z-index: 1; white-space: normal; } .tooltip:hover .tooltiptext { visibility: visible; } #FFnS_CloseSettingsBtn { float:right; width: 24px; height: 24px; } #FFnS_ImportMenu_Submit { margin-top: 1%; } #FFnS_MaxPeriod_Infos > input[type=number]{ width: 30px; margin-left: 1%; margin-right: 1%; } #FFnS_MinPopularity_AdvancedControlsReceivedPeriod { width: 45px; } #FFnS_MaxPeriod_Infos { margin: 1% 0 2% 0; } .setting_group { white-space: nowrap; margin-right: 2%; } fieldset { border-color: #333690; border-style: sold; } legend { color: #333690; font-weight: bold; } fieldset + fieldset { margin-top: 1%; } fieldset select { margin-left: 2% } input { vertical-align: middle; } "
 };
 
 var UIManager = (function () {
@@ -651,8 +670,9 @@ var UIManager = (function () {
             },
             {
                 type: HTMLElementType.CheckBox,
-                ids: ["FilteringEnabled", "RestrictingEnabled", "SortingEnabled",
-                    "KeepUnread_AdvancedControlsReceivedPeriod", "Hide_AdvancedControlsReceivedPeriod", "ShowIfHot_AdvancedControlsReceivedPeriod", "MarkAsReadVisible_AdvancedControlsReceivedPeriod"]
+                ids: ["FilteringEnabled", "RestrictingEnabled", "SortingEnabled", "PinHotToTop",
+                    "KeepUnread_AdvancedControlsReceivedPeriod", "Hide_AdvancedControlsReceivedPeriod",
+                    "ShowIfHot_AdvancedControlsReceivedPeriod", "MarkAsReadVisible_AdvancedControlsReceivedPeriod"]
             },
             {
                 type: HTMLElementType.NumberInput, ids: ["MinPopularity_AdvancedControlsReceivedPeriod"]
@@ -881,22 +901,22 @@ var UIManager = (function () {
         this.refreshFilteringAndSorting();
         this.setUpKeywordButtonsEvents(type);
     };
-    UIManager.prototype.addArticle = function (articleNode) {
+    UIManager.prototype.addArticle = function (article) {
         try {
-            this.checkReadArticles(articleNode);
+            this.checkReadArticles(article);
             if (this.containsReadArticles) {
                 return;
             }
             this.tryAutoLoadAllArticles();
-            this.articleManager.addArticle(articleNode);
+            this.articleManager.addArticle(article);
         }
         catch (err) {
             console.log(err);
         }
     };
-    UIManager.prototype.checkReadArticles = function (articleNode) {
+    UIManager.prototype.checkReadArticles = function (article) {
         if (!this.containsReadArticles) {
-            this.containsReadArticles = $(articleNode).find(ext.articleLinkSelector).hasClass(ext.readArticleClass);
+            this.containsReadArticles = $(article).find(ext.articleLinkSelector).hasClass(ext.readArticleClass);
             if (this.containsReadArticles) {
                 this.articleManager.resetArticles();
                 window.scrollTo(0, 0);
@@ -908,7 +928,6 @@ var UIManager = (function () {
             return;
         }
         if (this.isVisible($(ext.fullyLoadedArticlesSelector))) {
-            this.subscriptionManager.updateUnreadCount();
             window.scrollTo(0, 0);
             return;
         }

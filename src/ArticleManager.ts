@@ -32,7 +32,7 @@ export class ArticleManager {
         this.lastReadArticleAge = -1;
         this.lastReadArticleGroup = [];
         this.articlesToMarkAsRead = [];
-        $("." + this.hiddingInfoClass).remove();
+        this.clearHiddingInfo();
         this.eval("window.FFnS = ({});");
     }
 
@@ -41,11 +41,11 @@ export class ArticleManager {
     }
 
     getCurrentUnreadCount() {
-        return this.subscriptionManager.getCurrentUnreadCount();
+        return $(ext.articleSelector).length;
     }
 
-    addArticle(articleNode: Node) {
-        var article = new Article(articleNode);
+    addArticle(a: Element) {
+        var article = new Article(a);
         var sub = this.getCurrentSub();
         var title = article.getTitle();
         if (sub.isFilteringEnabled() || sub.isRestrictingEnabled()) {
@@ -96,7 +96,7 @@ export class ArticleManager {
                     }
                 } else {
                     if (advControls.hide) {
-                        if (advControls.showIfHot && (article.isArticleHot()
+                        if (advControls.showIfHot && (article.isHot()
                             || article.getPopularity() >= advControls.minPopularity)) {
                             if (advControls.keepUnread && advControls.markAsReadVisible) {
                                 this.articlesToMarkAsRead.push(article);
@@ -142,16 +142,41 @@ export class ArticleManager {
                 this.putWindow(ext.keepNewArticlesUnreadId, true);
             }
 
-            $(ext.unreadCountSelector).append("<span class=" + this.hiddingInfoClass + ">(hidden: " + this.hiddenCount + ")</span>");
+            this.showHiddingInfo();
         }
     }
 
     sortArticles() {
-        var sortingType = this.getCurrentSub().getSortingType();
-        var articlesArray: Article[] = $.map<Node, Article>($(ext.articleSelector).toArray(), ((node) => {
-            return new Article(node);
+        var articlesArray: Article[] = $.map<Element, Article>($(ext.articleSelector).toArray(), ((a) => {
+            return new Article(a);
         }));
-        articlesArray.sort((a: Article, b: Article) => {
+        if (this.getCurrentSub().isPinHotToTop()) {
+            var hotArticles: Article[] = [];
+            var normalArticles: Article[] = [];
+            articlesArray.forEach((article) => {
+                if (article.isHot()) {
+                    hotArticles.push(article);
+                } else {
+                    normalArticles.push(article);
+                }
+            });
+            this.sortArticleArray(hotArticles);
+            this.sortArticleArray(normalArticles);
+            articlesArray = hotArticles.concat(normalArticles);
+        } else {
+            this.sortArticleArray(articlesArray);
+        }
+
+        var articlesContainer = $(ext.articleSelector).first().parent();
+        articlesContainer.empty();
+        articlesArray.forEach((article) => {
+            articlesContainer.append(article.get());
+        });
+    }
+
+    sortArticleArray(articles: Article[]) {
+        var sortingType = this.getCurrentSub().getSortingType();
+        articles.sort((a: Article, b: Article) => {
             if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
                 var titleA = a.getTitle();
                 var titleB = b.getTitle();
@@ -167,12 +192,6 @@ export class ArticleManager {
                 return (popA - popB) * i;
             }
         });
-
-        var articlesContainer = $(ext.articleSelector).first().parent();
-        articlesContainer.empty();
-        articlesArray.forEach((article) => {
-            articlesContainer.append(article.get());
-        });
     }
 
     isOldestFirst(): boolean {
@@ -184,6 +203,18 @@ export class ArticleManager {
             console.log(err);
             return false;
         }
+    }
+
+    showHiddingInfo() {
+        if (this.hiddenCount == 0) {
+            return;
+        }
+        this.clearHiddingInfo();
+        $(ext.unreadCountSelector).after("<span class=" + this.hiddingInfoClass + ">(hidden: " + this.hiddenCount + ")</span>");
+    }
+
+    clearHiddingInfo() {
+        $("." + this.hiddingInfoClass).remove();
     }
 
     putWindow(id: string, value: any) {
@@ -238,7 +269,7 @@ export class ArticleManager {
 class Article {
     private article: JQuery;
 
-    constructor(article: Node) {
+    constructor(article: Element) {
         this.article = $(article);
     }
 
@@ -268,7 +299,7 @@ class Article {
         return publishDateMs;
     }
 
-    isArticleHot(): boolean {
+    isHot(): boolean {
         var span = this.article.find(ext.popularitySelector);
         return span.hasClass("hot") || span.hasClass("onfire");
     }

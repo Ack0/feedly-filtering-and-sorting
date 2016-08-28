@@ -27,8 +27,9 @@ export class UIManager {
         },
         {
             type: HTMLElementType.CheckBox,
-            ids: ["FilteringEnabled", "RestrictingEnabled", "SortingEnabled",
-                "KeepUnread_AdvancedControlsReceivedPeriod", "Hide_AdvancedControlsReceivedPeriod", "ShowIfHot_AdvancedControlsReceivedPeriod", "MarkAsReadVisible_AdvancedControlsReceivedPeriod"]
+            ids: ["FilteringEnabled", "RestrictingEnabled", "SortingEnabled", "PinHotToTop",
+                "KeepUnread_AdvancedControlsReceivedPeriod", "Hide_AdvancedControlsReceivedPeriod",
+                "ShowIfHot_AdvancedControlsReceivedPeriod", "MarkAsReadVisible_AdvancedControlsReceivedPeriod"]
         },
         {
             type: HTMLElementType.NumberInput, ids: ["MinPopularity_AdvancedControlsReceivedPeriod"]
@@ -288,22 +289,22 @@ export class UIManager {
         this.setUpKeywordButtonsEvents(type);
     }
 
-    addArticle(articleNode: Node) {
+    addArticle(article: Element) {
         try {
-            this.checkReadArticles(articleNode);
+            this.checkReadArticles(article);
             if (this.containsReadArticles) {
                 return;
             }
             this.tryAutoLoadAllArticles();
-            this.articleManager.addArticle(articleNode);
+            this.articleManager.addArticle(article);
         } catch (err) {
             console.log(err);
         }
     }
 
-    checkReadArticles(articleNode: Node) {
+    checkReadArticles(article: Element) {
         if (!this.containsReadArticles) {
-            this.containsReadArticles = $(articleNode).find(ext.articleLinkSelector).hasClass(ext.readArticleClass);
+            this.containsReadArticles = $(article).find(ext.articleLinkSelector).hasClass(ext.readArticleClass);
             if (this.containsReadArticles) {
                 this.articleManager.resetArticles();
                 window.scrollTo(0, 0);
@@ -316,7 +317,6 @@ export class UIManager {
             return;
         }
         if (this.isVisible($(ext.fullyLoadedArticlesSelector))) {
-            this.subscriptionManager.updateUnreadCount();
             window.scrollTo(0, 0);
             return;
         }

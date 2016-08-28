@@ -41,6 +41,10 @@ export class Subscription {
         return this.dto.sortingEnabled;
     }
 
+    isPinHotToTop(): boolean {
+        return this.dto.pinHotToTop;
+    }
+
     getAdvancedControlsReceivedPeriod(): AdvancedControlsReceivedPeriod {
         return this.dto.advancedControlsReceivedPeriod;
     }

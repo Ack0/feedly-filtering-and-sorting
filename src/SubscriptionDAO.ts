@@ -43,14 +43,12 @@ export class SubscriptionDAO {
         if (dtoToClone == null) {
             return clone;
         }
-        if (dtoToClone.filteringEnabled != null)
-            clone.filteringEnabled = dtoToClone.filteringEnabled;
-        if (dtoToClone.restrictingEnabled != null)
-            clone.restrictingEnabled = dtoToClone.restrictingEnabled;
-        if (dtoToClone.sortingEnabled != null)
-            clone.sortingEnabled = dtoToClone.sortingEnabled;
-        if (dtoToClone.sortingType != null)
-            clone.sortingType = dtoToClone.sortingType;
+        var defDto = this.defaultSubscription != null ? this.defaultSubscription : clone;
+        clone.filteringEnabled = (dtoToClone.filteringEnabled != null) ? dtoToClone.filteringEnabled : defDto.filteringEnabled;
+        clone.restrictingEnabled = (dtoToClone.restrictingEnabled != null) ? dtoToClone.restrictingEnabled : defDto.restrictingEnabled;
+        clone.sortingEnabled = (dtoToClone.sortingEnabled != null) ? dtoToClone.sortingEnabled : defDto.sortingEnabled;
+        clone.sortingType = (dtoToClone.sortingType != null) ? dtoToClone.sortingType : defDto.sortingType;
+        clone.pinHotToTop = (dtoToClone.pinHotToTop != null) ? dtoToClone.pinHotToTop : defDto.pinHotToTop;
         clone.advancedControlsReceivedPeriod = this.cloneAdvancedControlsReceivedPeriod(dtoToClone);
         getFilteringTypes().forEach((type) => {
             clone.filteringListsByType[type] = dtoToClone.filteringListsByType[type].slice(0);
@@ -64,18 +62,13 @@ export class SubscriptionDAO {
         if (advCtrolsToClone == null) {
             return advCtrols;
         }
-        if (advCtrolsToClone.maxHours != null)
-            advCtrols.maxHours = advCtrolsToClone.maxHours;
-        if (advCtrolsToClone.keepUnread != null)
-            advCtrols.keepUnread = advCtrolsToClone.keepUnread;
-        if (advCtrolsToClone.hide != null)
-            advCtrols.hide = advCtrolsToClone.hide;
-        if (advCtrolsToClone.showIfHot != null)
-            advCtrols.showIfHot = advCtrolsToClone.showIfHot;
-        if (advCtrolsToClone.minPopularity != null)
-            advCtrols.minPopularity = advCtrolsToClone.minPopularity;
-        if (advCtrolsToClone.markAsReadVisible != null)
-            advCtrols.markAsReadVisible = advCtrolsToClone.markAsReadVisible;
+        var defAdvCtrols = this.defaultSubscription != null ? this.defaultSubscription.advancedControlsReceivedPeriod : advCtrols;
+        advCtrols.maxHours = (advCtrolsToClone.maxHours != null) ? advCtrolsToClone.maxHours : defAdvCtrols.maxHours;
+        advCtrols.keepUnread = (advCtrolsToClone.keepUnread != null) ? advCtrolsToClone.keepUnread : defAdvCtrols.keepUnread;
+        advCtrols.hide = (advCtrolsToClone.hide != null) ? advCtrolsToClone.hide : defAdvCtrols.hide;
+        advCtrols.showIfHot = (advCtrolsToClone.showIfHot != null) ? advCtrolsToClone.showIfHot : defAdvCtrols.showIfHot;
+        advCtrols.minPopularity = (advCtrolsToClone.minPopularity != null) ? advCtrolsToClone.minPopularity : defAdvCtrols.minPopularity;
+        advCtrols.markAsReadVisible = (advCtrolsToClone.markAsReadVisible != null) ? advCtrolsToClone.markAsReadVisible : defAdvCtrols.markAsReadVisible;
         return advCtrols;
     }
 

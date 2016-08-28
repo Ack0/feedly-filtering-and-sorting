@@ -9,7 +9,6 @@ export class SubscriptionManager {
     private globalSettings : Subscription;
     private dao : SubscriptionDAO;
     private urlPrefixPattern = new RegExp(ext.urlPrefixPattern, "i");
-    private currentUnreadCount = 0;
     
     constructor() {
         this.dao = new SubscriptionDAO();
@@ -17,7 +16,6 @@ export class SubscriptionManager {
     }
     
     loadSubscription(globalSettingsEnabled: boolean) : Subscription {
-        this.currentUnreadCount = 0;
         var subscription: Subscription;
         if(globalSettingsEnabled) {
             subscription = this.globalSettings;
@@ -43,15 +41,7 @@ export class SubscriptionManager {
         return url;
     }
     
-    updateUnreadCount() {
-        this.currentUnreadCount = $(ext.articleSelector).length;
-    }
-    
     getCurrentSubscription() {
         return this.currentSubscription;
-    }
-    
-    getCurrentUnreadCount() {
-        return this.currentUnreadCount;
     }
 }
