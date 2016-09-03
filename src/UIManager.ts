@@ -295,10 +295,26 @@ export class UIManager {
             if (this.containsReadArticles) {
                 return;
             }
-            this.tryAutoLoadAllArticles();
             this.articleManager.addArticle(article);
+            this.tryAutoLoadAllArticles();
         } catch (err) {
             console.log(err);
+        }
+    }
+
+    addMagazineTopEntry(article: Element) {
+        try {
+            this.articleManager.addMagazineTopEntry(article);
+        } catch (err) {
+            console.log(err);
+        }
+    }
+
+    addSection(section: Element) {
+        if(section.id === "section0") {
+            $(section).find("h2").text(" ");
+        } else {
+            $(section).remove();
         }
     }
 

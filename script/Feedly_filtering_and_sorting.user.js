@@ -10,7 +10,7 @@
 // @require     http://code.jquery.com/jquery.min.js
 // @require     https://raw.githubusercontent.com/soufianesakhi/node-creation-observer-js/master/release/node-creation-observer-latest.js
 // @include     *://feedly.com/*
-// @version     1.2.2
+// @version     1.3.0
 // @grant       GM_setValue
 // @grant       GM_getValue
 // @grant       GM_listValues
@@ -23,18 +23,26 @@ var ext = {
     "closeIconLink": "https://cdn2.iconfinder.com/data/icons/social-productivity-line-art-1/128/close-cancel-128.png",
     "urlPrefixPattern": "https?:\/\/[^\/]+\/i\/",
     "settingsBtnPredecessorSelector": "#pageActionCustomize, #floatingPageActionCustomize",
-    "articleSelector": "#section0_column0 > div",
+    "articleSelector": "#timeline > [id$='column0'] > div",
+    "sectionSelector": "#timeline > .section",
     "articleLinkSelector": "a[id$=\"_main_title\"]",
     "publishAgeSpanSelector": ".lastModified > span",
     "publishAgeTimestampAttr": "title",
-    "publishAgeTimestampPattern": "title",
     "readArticleClass": "read",
     "subscriptionChangeSelector": "h1#feedlyTitleBar > .hhint",
     "articleTitleAttribute": "data-title",
-    "articleEntryIdAttribute": "data-inlineentryid",
+    "articleEntryIdAttribute": "data-entryid",
     "popularitySelector": ".nbrRecommendations",
     "unreadCountSelector": ".hhint > [class*='UnreadCount']",
     "fullyLoadedArticlesSelector": "#fullyLoadedFollowing",
+    "magazineView": "u4Entry",
+    "magazineAgeSuccessorSelector": "span.wikiBar",
+    "cardsView": "u5Entry",
+    "fullArticlesView": "u100Frame",
+    "fullArticlesAgePredecessorSelector": "a.sourceTitle",
+    "magazineTopEntryClass": "topRecommendedEntry",
+    "magazineTopEntrySelector": "div.topRecommendedEntry",
+    "magazineTopEntryTitleSelector": "a.title",
     "lastReadEntryId": "lastReadEntry",
     "keepNewArticlesUnreadId": "keepNewArticlesUnread",
     "articlesToMarkAsReadId": "articlesToMarkAsRead"
@@ -55,8 +63,8 @@ function callbackBindedTo(thisArg) {
         return callback.bind(this);
     }).bind(thisArg);
 }
-function capitalizeFirst(string) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
+function capitalizeFirst(s) {
+    return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function isRadioChecked(input) {
     return input.is(':checked');
@@ -89,15 +97,13 @@ function registerAccessors(srcObject, srcFieldName, targetPrototype, setterCallb
                 if (targetPrototype[getterName] == null) {
                     targetPrototype[getterName] = function () {
                         var finalObj = getFinalObj(this[srcFieldName]);
-                        var value = finalObj[callbackField];
-                        return value;
+                        return finalObj[callbackField];
                     };
                 }
                 if (targetPrototype[setterName] == null) {
                     targetPrototype[setterName] = function (value) {
                         var callbackSrcObj = this[srcFieldName];
                         var finalObj = getFinalObj(callbackSrcObj);
-                        var oldValue = finalObj[callbackField];
                         finalObj[callbackField] = value;
                         setterCallback.call(setterCallbackThisArg, callbackSrcObj);
                     };
@@ -378,6 +384,7 @@ var ArticleManager = (function () {
     ArticleManager.prototype.refreshArticles = function () {
         this.resetArticles();
         $(ext.articleSelector).toArray().forEach(this.addArticle, this);
+        $(ext.magazineTopEntrySelector).toArray().forEach(this.addMagazineTopEntry, this);
     };
     ArticleManager.prototype.resetArticles = function () {
         this.articlesCount = 0;
@@ -396,6 +403,16 @@ var ArticleManager = (function () {
     };
     ArticleManager.prototype.addArticle = function (a) {
         var article = new Article(a);
+        this.filterAndRestrict(article);
+        this.advancedControls(article);
+        this.articlesCount++;
+        this.checkLastAddedArticle();
+    };
+    ArticleManager.prototype.addMagazineTopEntry = function (a) {
+        var article = new Article(a);
+        this.filterAndRestrict(article);
+    };
+    ArticleManager.prototype.filterAndRestrict = function (article) {
         var sub = this.getCurrentSub();
         var title = article.getTitle();
         if (sub.isFilteringEnabled() || sub.isRestrictingEnabled()) {
@@ -429,6 +446,12 @@ var ArticleManager = (function () {
         else {
             article.css("display", "");
         }
+    };
+    ArticleManager.prototype.advancedControls = function (article) {
+        if (article.get().hasClass(ext.cardsView)) {
+            return; // No publish age in card view
+        }
+        var sub = this.getCurrentSub();
         var advControls = sub.getAdvancedControlsReceivedPeriod();
         if (advControls.keepUnread || advControls.hide) {
             try {
@@ -465,10 +488,9 @@ var ArticleManager = (function () {
                 console.log(err);
             }
         }
-        this.articlesCount++;
-        this.checkLastAddedArticle(sub);
     };
-    ArticleManager.prototype.checkLastAddedArticle = function (sub) {
+    ArticleManager.prototype.checkLastAddedArticle = function () {
+        var sub = this.getCurrentSub();
         if (this.articlesCount == this.getCurrentUnreadCount()) {
             if (this.lastReadArticleGroup.length > 0) {
                 var lastReadArticle;
@@ -620,7 +642,14 @@ var Article = (function () {
         return this.article;
     };
     Article.prototype.getTitle = function () {
-        return this.article.attr(ext.articleTitleAttribute).toLowerCase();
+        var title;
+        if (this.article.hasClass(ext.magazineTopEntryClass)) {
+            title = this.article.find(ext.magazineTopEntryTitleSelector).text();
+        }
+        else {
+            title = this.article.attr(ext.articleTitleAttribute);
+        }
+        return title.trim().toLowerCase();
     };
     Article.prototype.getPopularity = function () {
         var popularityStr = this.article.find(ext.popularitySelector).text().trim();
@@ -633,8 +662,17 @@ var Article = (function () {
         return popularityNumber;
     };
     Article.prototype.getPublishAge = function () {
-        var ageTitle = this.article.find(ext.publishAgeSpanSelector).attr("title");
-        var publishDate = ageTitle.split("--")[1].trim().replace("Received:", "").trim();
+        var ageStr;
+        if (this.article.hasClass(ext.fullArticlesView)) {
+            ageStr = this.article.find(ext.fullArticlesAgePredecessorSelector).next().attr(ext.publishAgeTimestampAttr);
+        }
+        else if (this.article.hasClass(ext.magazineView)) {
+            ageStr = this.article.find(ext.magazineAgeSuccessorSelector).prev().attr(ext.publishAgeTimestampAttr);
+        }
+        else {
+            ageStr = this.article.find(ext.publishAgeSpanSelector).attr(ext.publishAgeTimestampAttr);
+        }
+        var publishDate = ageStr.split("--")[1].replace(/[^:]*:/, "").trim();
         var publishDateMs = Date.parse(publishDate);
         return publishDateMs;
     };
@@ -907,11 +945,27 @@ var UIManager = (function () {
             if (this.containsReadArticles) {
                 return;
             }
-            this.tryAutoLoadAllArticles();
             this.articleManager.addArticle(article);
+            this.tryAutoLoadAllArticles();
         }
         catch (err) {
             console.log(err);
+        }
+    };
+    UIManager.prototype.addMagazineTopEntry = function (article) {
+        try {
+            this.articleManager.addMagazineTopEntry(article);
+        }
+        catch (err) {
+            console.log(err);
+        }
+    };
+    UIManager.prototype.addSection = function (section) {
+        if (section.id === "section0") {
+            $(section).find("h2").text(" ");
+        }
+        else {
+            $(section).remove();
         }
     };
     UIManager.prototype.checkReadArticles = function (article) {
@@ -1111,6 +1165,8 @@ $(document).ready(function () {
         console.log("Feedly page fully loaded");
         uiManager.init();
         NodeCreationObserver.onCreation(ext.articleSelector, uiManagerBind(uiManager.addArticle));
+        NodeCreationObserver.onCreation(ext.magazineTopEntrySelector, uiManagerBind(uiManager.addMagazineTopEntry));
+        NodeCreationObserver.onCreation(ext.sectionSelector, uiManagerBind(uiManager.addSection));
         NodeCreationObserver.onCreation(ext.subscriptionChangeSelector, uiManagerBind(uiManager.updatePage));
     }, true);
 });

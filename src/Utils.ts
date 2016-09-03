@@ -21,8 +21,8 @@ export function callbackBindedTo(thisArg: any): (callback: (...args: any[]) => a
     }).bind(thisArg);
 }
 
-export function capitalizeFirst(string: string): string {
-    return string.charAt(0).toUpperCase() + string.slice(1);
+export function capitalizeFirst(s: string): string {
+    return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 export function isRadioChecked(input: JQuery): boolean {
@@ -56,15 +56,13 @@ export function registerAccessors(srcObject, srcFieldName: string, targetPrototy
                 if (targetPrototype[getterName] == null) {
                     targetPrototype[getterName] = function () {
                         var finalObj = getFinalObj(this[srcFieldName])
-                        var value = finalObj[callbackField];
-                        return value;
+                        return finalObj[callbackField];
                     };
                 }
                 if (targetPrototype[setterName] == null) {
                     targetPrototype[setterName] = function (value) {
                         var callbackSrcObj = this[srcFieldName];
                         var finalObj = getFinalObj(callbackSrcObj)
-                        var oldValue = finalObj[callbackField];
                         finalObj[callbackField] = value;
                         setterCallback.call(setterCallbackThisArg, callbackSrcObj);
                     };

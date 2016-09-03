@@ -12,17 +12,23 @@ When this script is enabled, a filter icon will appear next to the settings icon
 
 ## Features
 
-- Filtering: Hide the articles that contain at least one of the filtering keywords (not applied if empty)
-- Restricting: Show only articles that contain at least one of the restricting keywords (not applied if empty)
+- Filtering: Hide the articles that contain at least one of the filtering keywords (not applied if empty).
+- Restricting: Show only articles that contain at least one of the restricting keywords (not applied if empty).
 - Sorting: by popularity or by title.
-- Auto load all unread articles
-- Advanced controls of the recently published articles
+- Auto load all unread articles.
+- Advanced controls of the recently published articles.
 - Pin hot articles to top.
 - Import settings from other subscriptions or from global settings.
 
 Two settings modes are available: 
 - Global settings: same settings used for all subscriptions and categories.
-- Subscription settings: subscription and category specific settings (the default settings values are the global settings)
+- Subscription settings: subscription and category specific settings (the default settings values are the global settings).
+
+Presentation support:
+- The `Title Only` view is fully supported.
+- The `Magazine` view is supported except the `Most popular` section (Only filtering and restricting supported in this section). 
+- Recently published articles controls not supported in the `Cards` view (publish age not available in this view).
+- The `Full Articles` view is fully supported.
 
 ## Installation
 

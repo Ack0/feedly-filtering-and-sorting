@@ -24,6 +24,7 @@ export class ArticleManager {
     refreshArticles() {
         this.resetArticles();
         $(ext.articleSelector).toArray().forEach(this.addArticle, this);
+        $(ext.magazineTopEntrySelector).toArray().forEach(this.addMagazineTopEntry, this);
     }
 
     resetArticles() {
@@ -46,6 +47,18 @@ export class ArticleManager {
 
     addArticle(a: Element) {
         var article = new Article(a);
+        this.filterAndRestrict(article);
+        this.advancedControls(article);
+        this.articlesCount++;
+        this.checkLastAddedArticle();
+    }
+
+    addMagazineTopEntry(a: Element) {
+        var article = new Article(a);
+        this.filterAndRestrict(article);
+    }
+
+    filterAndRestrict(article: Article) {
         var sub = this.getCurrentSub();
         var title = article.getTitle();
         if (sub.isFilteringEnabled() || sub.isRestrictingEnabled()) {
@@ -78,7 +91,13 @@ export class ArticleManager {
         } else {
             article.css("display", "");
         }
+    }
 
+    advancedControls(article: Article) {
+        if (article.get().hasClass(ext.cardsView)) {
+            return; // No publish age in card view
+        }
+        var sub = this.getCurrentSub();
         var advControls = sub.getAdvancedControlsReceivedPeriod();
         if (advControls.keepUnread || advControls.hide) {
             try {
@@ -111,12 +130,10 @@ export class ArticleManager {
                 console.log(err);
             }
         }
-
-        this.articlesCount++;
-        this.checkLastAddedArticle(sub);
     }
 
-    checkLastAddedArticle(sub: Subscription) {
+    checkLastAddedArticle() {
+        var sub = this.getCurrentSub();
         if (this.articlesCount == this.getCurrentUnreadCount()) {
             if (this.lastReadArticleGroup.length > 0) {
                 var lastReadArticle: Article;
@@ -278,7 +295,13 @@ class Article {
     }
 
     getTitle(): string {
-        return this.article.attr(ext.articleTitleAttribute).toLowerCase();
+        var title: string;
+        if (this.article.hasClass(ext.magazineTopEntryClass)) {
+            title = this.article.find(ext.magazineTopEntryTitleSelector).text();
+        } else {
+            title = this.article.attr(ext.articleTitleAttribute)
+        }
+        return title.trim().toLowerCase();
     }
 
     getPopularity(): number {
@@ -293,8 +316,15 @@ class Article {
     }
 
     getPublishAge(): number {
-        var ageTitle = this.article.find(ext.publishAgeSpanSelector).attr("title");
-        var publishDate = ageTitle.split("--")[1].trim().replace("Received:", "").trim();
+        var ageStr: string;
+        if (this.article.hasClass(ext.fullArticlesView)) {
+            ageStr = this.article.find(ext.fullArticlesAgePredecessorSelector).next().attr(ext.publishAgeTimestampAttr);
+        } else if (this.article.hasClass(ext.magazineView)) {
+            ageStr = this.article.find(ext.magazineAgeSuccessorSelector).prev().attr(ext.publishAgeTimestampAttr);
+        } else {
+            ageStr = this.article.find(ext.publishAgeSpanSelector).attr(ext.publishAgeTimestampAttr);
+        }
+        var publishDate = ageStr.split("--")[1].replace(/[^:]*:/, "").trim();
         var publishDateMs = Date.parse(publishDate);
         return publishDateMs;
     }
