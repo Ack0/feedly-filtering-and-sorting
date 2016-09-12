@@ -9,7 +9,7 @@ import {registerAccessors} from "./Utils";
 export class SubscriptionDAO {
     private SUBSCRIPTION_ID_PREFIX = "subscription_";
     private GLOBAL_SETTINGS_SUBSCRIPTION_URL = "---global settings---";
-    private defaultSubscription: SubscriptionDTO;
+    private defaultSubscriptionDTO: SubscriptionDTO;
 
     constructor() {
         registerAccessors(new SubscriptionDTO(""), "dto", Subscription.prototype, this.save, this);
@@ -22,20 +22,34 @@ export class SubscriptionDAO {
         console.log("Subscription saved: " + JSON.stringify(dto));
     }
 
-    load(url: string): Subscription {
-        var subscriptionDTO: SubscriptionDTO = LocalPersistence.get(this.getSubscriptionId(url), null);
-        if (subscriptionDTO != null) {
-            console.log("Loaded saved subscription: " + JSON.stringify(subscriptionDTO));
-        } else {
-            if (this.defaultSubscription == null) {
+    load(url: string): SubscriptionDTO {
+        var subscriptionDTO: SubscriptionDTO;
+        var id = this.getSubscriptionId(url);
+        var dto = LocalPersistence.get(id, null);
+        if (dto != null) {
+            var linkedURL = (<LinkedSubscriptionDTO> dto).linkedUrl;
+            if (linkedURL != null) {
+                console.log("Loading linked subscription: " + linkedURL);
+                subscriptionDTO = this.load(linkedURL);
+            } else {
+                subscriptionDTO = <SubscriptionDTO> dto;
+                console.log("Loaded saved subscription: " + JSON.stringify(subscriptionDTO));
+            }
+        }
+        if (subscriptionDTO == null) {
+            if (this.defaultSubscriptionDTO == null) {
                 subscriptionDTO = new SubscriptionDTO(url);
                 this.save(subscriptionDTO);
             } else {
-                subscriptionDTO = this.clone(this.defaultSubscription, url);
+                subscriptionDTO = this.clone(this.defaultSubscriptionDTO, url);
             }
         }
-        var subscription = new Subscription(subscriptionDTO, this);
-        return subscription;
+        return subscriptionDTO;
+    }
+    
+    delete(url: string) {
+        LocalPersistence.delete(this.getSubscriptionId(url));
+        console.log("Deleted: " + url);
     }
 
     clone(dtoToClone: SubscriptionDTO, cloneUrl: string): SubscriptionDTO {
@@ -43,15 +57,16 @@ export class SubscriptionDAO {
         if (dtoToClone == null) {
             return clone;
         }
-        var defDto = this.defaultSubscription != null ? this.defaultSubscription : clone;
+        var defDto = this.defaultSubscriptionDTO != null ? this.defaultSubscriptionDTO : clone;
         clone.filteringEnabled = (dtoToClone.filteringEnabled != null) ? dtoToClone.filteringEnabled : defDto.filteringEnabled;
         clone.restrictingEnabled = (dtoToClone.restrictingEnabled != null) ? dtoToClone.restrictingEnabled : defDto.restrictingEnabled;
         clone.sortingEnabled = (dtoToClone.sortingEnabled != null) ? dtoToClone.sortingEnabled : defDto.sortingEnabled;
         clone.sortingType = (dtoToClone.sortingType != null) ? dtoToClone.sortingType : defDto.sortingType;
         clone.pinHotToTop = (dtoToClone.pinHotToTop != null) ? dtoToClone.pinHotToTop : defDto.pinHotToTop;
         clone.advancedControlsReceivedPeriod = this.cloneAdvancedControlsReceivedPeriod(dtoToClone);
+        var filteringListsByTypeToClone = (dtoToClone.filteringListsByType != null) ? dtoToClone.filteringListsByType : defDto.filteringListsByType;
         getFilteringTypes().forEach((type) => {
-            clone.filteringListsByType[type] = dtoToClone.filteringListsByType[type].slice(0);
+            clone.filteringListsByType[type] = filteringListsByTypeToClone[type].slice(0);
         });
         return clone;
     }
@@ -62,7 +77,7 @@ export class SubscriptionDAO {
         if (advCtrolsToClone == null) {
             return advCtrols;
         }
-        var defAdvCtrols = this.defaultSubscription != null ? this.defaultSubscription.advancedControlsReceivedPeriod : advCtrols;
+        var defAdvCtrols = this.defaultSubscriptionDTO != null ? this.defaultSubscriptionDTO.advancedControlsReceivedPeriod : advCtrols;
         advCtrols.maxHours = (advCtrolsToClone.maxHours != null) ? advCtrolsToClone.maxHours : defAdvCtrols.maxHours;
         advCtrols.keepUnread = (advCtrolsToClone.keepUnread != null) ? advCtrolsToClone.keepUnread : defAdvCtrols.keepUnread;
         advCtrols.hide = (advCtrolsToClone.hide != null) ? advCtrolsToClone.hide : defAdvCtrols.hide;
@@ -73,8 +88,8 @@ export class SubscriptionDAO {
     }
 
     loadGlobalSettings(): Subscription {
-        var globalSettings = this.load(this.GLOBAL_SETTINGS_SUBSCRIPTION_URL);
-        this.defaultSubscription = globalSettings.dto;
+        var globalSettings = new Subscription(this.GLOBAL_SETTINGS_SUBSCRIPTION_URL, this);
+        this.defaultSubscriptionDTO = globalSettings.dto;
         return globalSettings;
     }
 
@@ -90,5 +105,23 @@ export class SubscriptionDAO {
 
     getSubscriptionId(url: string): string {
         return this.SUBSCRIPTION_ID_PREFIX + url;
+    }
+    
+    linkSubscriptions(url: string, linkedURL: string) {
+        var id = this.getSubscriptionId(url);
+        var linkedSub = new LinkedSubscriptionDTO(linkedURL);
+        LocalPersistence.put(id, linkedSub);
+        console.log("Subscription linked: " + JSON.stringify(linkedSub));
+    }
+
+    isURLGlobal(url: string) : boolean {
+        return url === this.GLOBAL_SETTINGS_SUBSCRIPTION_URL;
+    }
+}
+
+class LinkedSubscriptionDTO {
+    linkedUrl: string;
+    constructor(linkedUrl: string) {
+        this.linkedUrl = linkedUrl;
     }
 }

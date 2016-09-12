@@ -8,21 +8,18 @@ export class Subscription {
     dto: SubscriptionDTO;
     private dao: SubscriptionDAO;
 
-    constructor(dto: SubscriptionDTO, dao: SubscriptionDAO) {
-        this.dto = dao.clone(dto, dto.url);
+    constructor(url: string, dao: SubscriptionDAO) {
         this.dao = dao;
+        this.update(url, true);
     }
 
-    update(subscription: Subscription, skipSave?: boolean) {
-        var newDTO = subscription.clone(this.getURL());
-        this.dto = newDTO;
+    update(url: string, skipSave?: boolean) {
+        var dto = this.dao.load(url);
+        var cloneURL = this.dto == null ? dto.url : this.getURL();
+        this.dto =  this.dao.clone(dto, cloneURL);
         if (!skipSave) {
             this.dao.save(this.dto);
         }
-    }
-
-    clone(cloneUrl: string): SubscriptionDTO {
-        return this.dao.clone(this.dto, cloneUrl);
     }
 
     getURL(): string {

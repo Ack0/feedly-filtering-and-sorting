@@ -90,7 +90,7 @@ export class UIManager {
         getFilteringTypes().forEach((type) => {
             this.updateFilteringList(type);
         });
-        this.updateImportOptionsHTML();
+        this.updateSettingsControls();
     }
 
     updateSubscriptionSettings() {
@@ -103,8 +103,22 @@ export class UIManager {
         $id("FFnS_subscription_title").text(title);
     }
 
-    updateImportOptionsHTML() {
-        $id("FFnS_ImportMenu_SubscriptionSelect").html(this.getImportOptionsHTML());
+    updateSettingsControls() {
+        $id("FFnS_SettingsControls_SelectedSubscription").html(this.getImportOptionsHTML());
+        var linkedSubContainer = $id("FFnS_SettingsControls_LinkedSubContainer");
+        var linkedSub = $id("FFnS_SettingsControls_LinkedSub");
+        if (( (!this.globalSettingsEnabledCB.isEnabled()) && this.subscription.getURL() !== this.subscriptionManager.getActualSubscriptionURL() ) ||
+            (this.globalSettingsEnabledCB.isEnabled() && !this.subscriptionManager.isGlobalMode())) {
+            linkedSubContainer.css("display", "");
+            linkedSub.text("Subscription currently linked to: " + this.subscription.getURL());
+        } else {
+            linkedSubContainer.css("display", "none");
+            linkedSub.text("");
+        }
+    }
+
+    getSettingsControlsSelectedSubscription(): string {
+        return $id("FFnS_SettingsControls_SelectedSubscription").val();
     }
 
     initUI() {
@@ -214,8 +228,20 @@ export class UIManager {
             $id(this_.settingsDivContainerId).toggle();
         })
 
-        $id("FFnS_ImportMenu_Submit").click(() => {
-            this.importKeywords();
+        $id("FFnS_SettingsControls_ImportFromOtherSub").click(() => {
+            this.importFromOtherSub();
+        });
+
+        $id("FFnS_SettingsControls_LinkToSub").click(() => {
+            this.linkToSub();
+        });
+
+        $id("FFnS_SettingsControls_UnlinkFromSub").click(() => {
+            this.unlinkFromSub();
+        });
+
+        $id("FFnS_SettingsControls_DeleteSub").click(() => {
+            this.deleteSub();
         });
 
         this.setUpFilteringListEvents();
@@ -311,7 +337,7 @@ export class UIManager {
     }
 
     addSection(section: Element) {
-        if(section.id === "section0") {
+        if (section.id === "section0") {
             $(section).find("h2").text(" ");
         } else {
             $(section).remove();
@@ -340,11 +366,34 @@ export class UIManager {
         window.scrollTo(0, currentScrollHeight);
     }
 
-    importKeywords() {
-        var selectedURL: string = $id("FFnS_ImportMenu_SubscriptionSelect").val();
+    importFromOtherSub() {
+        var selectedURL = this.getSettingsControlsSelectedSubscription();
         if (selectedURL && confirm("Import keywords from the subscription url /" + selectedURL + " ?")) {
             this.subscriptionManager.importKeywords(selectedURL);
-            this.updateMenu();
+            this.refreshPage();
+        }
+    }
+
+    linkToSub() {
+        var selectedURL = this.getSettingsControlsSelectedSubscription();
+        if (selectedURL && confirm("Link current subscription to: /" + selectedURL + " ?")) {
+            this.subscriptionManager.linkToSubscription(selectedURL);
+            this.refreshPage();
+        }
+    }
+
+    unlinkFromSub() {
+        if (confirm("Unlink current subscription ?")) {
+            this.subscriptionManager.deleteSubscription(this.subscriptionManager.getActualSubscriptionURL());
+            this.refreshPage();
+        }
+    }
+
+    deleteSub() {
+        var selectedURL = this.getSettingsControlsSelectedSubscription();
+        if (selectedURL && confirm("Delete : /" + selectedURL + " ?")) {
+            this.subscriptionManager.deleteSubscription(selectedURL);
+            this.refreshPage();
         }
     }
 
@@ -365,7 +414,7 @@ export class UIManager {
     }
 
     getFilteringTypeTabId(filteringType: FilteringType) {
-        return this.getHTMLId("tab_" + FilteringType[filteringType]);
+        return this.getHTMLId("Tab_" + FilteringType[filteringType]);
     }
 
     getIds(type: FilteringType) {

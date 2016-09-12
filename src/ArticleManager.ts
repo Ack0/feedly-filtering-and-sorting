@@ -8,7 +8,6 @@ import {$id, isRadioChecked} from "./Utils";
 export class ArticleManager {
     subscriptionManager: SubscriptionManager;
     articlesCount = 0;
-    hiddenCount = 0;
     lastReadArticleAge = -1;
     lastReadArticleGroup: Article[];
     articlesToMarkAsRead: Article[];
@@ -29,7 +28,6 @@ export class ArticleManager {
 
     resetArticles() {
         this.articlesCount = 0;
-        this.hiddenCount = 0;
         this.lastReadArticleAge = -1;
         this.lastReadArticleGroup = [];
         this.articlesToMarkAsRead = [];
@@ -84,7 +82,6 @@ export class ArticleManager {
             }
             if (hide) {
                 article.css("display", "none");
-                this.hiddenCount++;
             } else {
                 article.css("display", "");
             }
@@ -122,7 +119,6 @@ export class ArticleManager {
                             }
                         } else {
                             article.css("display", "none");
-                            this.hiddenCount++;
                         }
                     }
                 }
@@ -223,11 +219,17 @@ export class ArticleManager {
     }
 
     showHiddingInfo() {
-        if (this.hiddenCount == 0) {
+        var hiddenCount = 0;
+        $(ext.articleSelector).each((i, a) => {
+            if ($(a).css("display") === "none") {
+                hiddenCount++;
+            }
+        })
+        if (hiddenCount == 0) {
             return;
         }
         this.clearHiddingInfo();
-        $(ext.unreadCountSelector).after("<span class=" + this.hiddingInfoClass + ">(hidden: " + this.hiddenCount + ")</span>");
+        $(ext.unreadCountSelector).after("<span class=" + this.hiddingInfoClass + ">(" + hiddenCount + " hidden)</span>");
     }
 
     clearHiddingInfo() {

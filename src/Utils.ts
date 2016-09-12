@@ -37,8 +37,7 @@ export function registerAccessors(srcObject, srcFieldName: string, targetPrototy
     for (var field in srcObject) {
         var type = typeof (srcObject[field]);
         if (type === "object") {
-            if ($.isArray(srcObject[field])) {
-            } else {
+            if (! $.isArray(srcObject[field])) {
                 registerAccessors(srcObject[field], srcFieldName, targetPrototype, setterCallback, setterCallbackThisArg, field);
             }
         } else if (type !== "function") {
