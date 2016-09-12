@@ -8,7 +8,10 @@ When this script is enabled, a filter icon will appear next to the settings icon
 
 ![Advanced settings](https://raw.githubusercontent.com/soufianesakhi/feedly-filtering-and-sorting/master/screenshots/menu_advanced.PNG)
 
-![Import settings](https://raw.githubusercontent.com/soufianesakhi/feedly-filtering-and-sorting/master/screenshots/menu_import.PNG)
+![Import settings](https://raw.githubusercontent.com/soufianesakhi/feedly-filtering-and-sorting/master/screenshots/settings_controls.PNG)
+
+This script requires the `Unread Only` option to be enabled (in the feedly settings / filters).
+![Unread Only](https://raw.githubusercontent.com/soufianesakhi/feedly-filtering-and-sorting/master/screenshots/unread_only.PNG)
 
 ## Features
 
@@ -19,10 +22,14 @@ When this script is enabled, a filter icon will appear next to the settings icon
 - Advanced controls of the recently published articles.
 - Pin hot articles to top.
 - Import settings from other subscriptions or from global settings.
+- Link settings to other subscriptions..
 
 Two settings modes are available: 
 - Global settings: same settings used for all subscriptions and categories.
-- Subscription settings: subscription and category specific settings (the default settings values are the global settings).
+- Subscription settings:
+  - Subscription and category specific settings
+  - The default settings values are the global settings.
+  - A group of subscriptions can share the same settings by linking them to the same subscription.
 
 Presentation support:
 - The `Title Only` view is fully supported.

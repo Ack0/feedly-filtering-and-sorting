@@ -44,22 +44,22 @@
             </span>
             <ul id="FFnS_tabs_menu">
                 <li class="current">
-                    <a href="#FFnS_tab_FilteredOut">Filtering keywords</a>
+                    <a href="#FFnS_Tab_FilteredOut">Filtering keywords</a>
                 </li>
                 <li>
-                    <a href="#FFnS_tab_RestrictedOn">Restricting keywords</a>
+                    <a href="#FFnS_Tab_RestrictedOn">Restricting keywords</a>
                 </li>
                 <li>
-                    <a href="#FFnS_tab_AdvancedControls">Advanced controls</a>
+                    <a href="#FFnS_Tab_AdvancedControls">Advanced controls</a>
                 </li>
                 <li>
-                    <a href="#FFnS_tab_ImportMenu">Import settings</a>
+                    <a href="#FFnS_Tab_SettingsControls">Settings controls</a>
                 </li>
             </ul>
             <div id="FFnS_tabs_content">
                 {{FilteringList.Type.FilteredOut}}
                 {{FilteringList.Type.RestrictedOn}}
-                <div id="FFnS_tab_AdvancedControls" class="FFnS_Tab_Menu">
+                <div id="FFnS_Tab_AdvancedControls" class="FFnS_Tab_Menu">
                     <fieldset><legend>Recently published articles</legend>
                         <div id="FFnS_MaxPeriod_Infos">
                             <span>Articles published less than</span>
@@ -94,12 +94,20 @@
                         </span>
                     </fieldset>
                 </div>
-                <div id="FFnS_tab_ImportMenu" class="FFnS_Tab_Menu">
-                    <span>From an other subscription: </span>
-                    <select id="FFnS_ImportMenu_SubscriptionSelect" class="FFnS_input">
+                <div id="FFnS_Tab_SettingsControls" class="FFnS_Tab_Menu">
+                    <span>Selected subscription:</span>
+                    <select id="FFnS_SettingsControls_SelectedSubscription" class="FFnS_input">
                         {{ImportMenu.SubscriptionOptions}}
                     </select>
-                    <div><button id="FFnS_ImportMenu_Submit">Import</button></div>
+                    <button id="FFnS_SettingsControls_ImportFromOtherSub">Import settings from selected subscription</button>
+                    <button id="FFnS_SettingsControls_DeleteSub">Delete selected subscription</button>
+                    <fieldset><legend>Linking</legend>
+                        <div id="FFnS_SettingsControls_LinkedSubContainer">
+                            <span id="FFnS_SettingsControls_LinkedSub"></span>
+                            <button id="FFnS_SettingsControls_UnlinkFromSub">Unlink</button>
+                        </div>
+                        <button id="FFnS_SettingsControls_LinkToSub">Link current subscription to selected subscription</button>
+                    </fieldset>
                 </div>
             </div>
         </fieldset>

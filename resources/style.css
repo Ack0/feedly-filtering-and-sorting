@@ -102,8 +102,14 @@
     height: 24px;
 }
 
-#FFnS_ImportMenu_Submit {
+#FFnS_Tab_SettingsControls button {
     margin-top: 1%;
+    font-size: 12px;
+    display: block;
+}
+
+#FFnS_Tab_SettingsControls #FFnS_SettingsControls_UnlinkFromSub {
+    display: inline;
 }
 
 #FFnS_MaxPeriod_Infos > input[type=number]{
@@ -135,7 +141,7 @@ legend {
     font-weight: bold;
 }
 
-fieldset + fieldset {
+fieldset + fieldset, #FFnS_Tab_SettingsControls fieldset {
     margin-top: 1%;
 }
 
