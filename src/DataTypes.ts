@@ -4,7 +4,9 @@ export enum SortingType {
     PopularityDesc,
     PopularityAsc,
     TitleDesc,
-    TitleAsc
+    TitleAsc,
+    PublishDateNewFirst,
+    PublishDateOldFirst
 }
 
 export enum FilteringType {

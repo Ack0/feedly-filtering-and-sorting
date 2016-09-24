@@ -7,15 +7,17 @@ import {$id, isRadioChecked} from "./Utils";
 
 export class ArticleManager {
     subscriptionManager: SubscriptionManager;
+    articleSorterFactory: ArticleSorterFactory;
     articlesCount = 0;
     lastReadArticleAge = -1;
     lastReadArticleGroup: Article[];
     articlesToMarkAsRead: Article[];
-    hiddingInfoClass = "FFnS_Hidding_Info";
+    hiddingInfoClass = "FFnS_Hiding_Info";
     eval = window["eval"];
 
     constructor(subscriptionManager: SubscriptionManager) {
         this.subscriptionManager = subscriptionManager;
+        this.articleSorterFactory = new ArticleSorterFactory();
         this.eval("(" + this.overrideMarkAsRead.toString() + ")();");
         this.eval("window.ext = (" + JSON.stringify(ext).replace(/\s+/g, ' ') + ");");
     }
@@ -81,12 +83,12 @@ export class ArticleManager {
                 }
             }
             if (hide) {
-                article.css("display", "none");
+                article.setVisible(false);
             } else {
-                article.css("display", "");
+                article.setVisible();
             }
         } else {
-            article.css("display", "");
+            article.setVisible();
         }
     }
 
@@ -118,7 +120,7 @@ export class ArticleManager {
                                 this.articlesToMarkAsRead.push(article);
                             }
                         } else {
-                            article.css("display", "none");
+                            article.setVisible(false);
                         }
                     }
                 }
@@ -160,13 +162,21 @@ export class ArticleManager {
     }
 
     sortArticles() {
-        var articlesArray: Article[] = $.map<Element, Article>($(ext.articleSelector).toArray(), ((a) => {
+        var visibleArticles: Article[] = [], hiddenArticles: Article[] = [];
+        (<Element[]>$(ext.articleSelector).toArray()).map<Article>(((a) => {
             return new Article(a);
-        }));
-        if (this.getCurrentSub().isPinHotToTop()) {
+        })).forEach((a) => {
+            if (a.isVisible()) {
+                visibleArticles.push(a);
+            } else {
+                hiddenArticles.push(a);
+            }
+        });
+        var sub = this.getCurrentSub();
+        if (sub.isPinHotToTop() && sub.getSortingType() == SortingType.PopularityDesc) {
             var hotArticles: Article[] = [];
             var normalArticles: Article[] = [];
-            articlesArray.forEach((article) => {
+            visibleArticles.forEach((article) => {
                 if (article.isHot()) {
                     hotArticles.push(article);
                 } else {
@@ -175,36 +185,24 @@ export class ArticleManager {
             });
             this.sortArticleArray(hotArticles);
             this.sortArticleArray(normalArticles);
-            articlesArray = hotArticles.concat(normalArticles);
+            visibleArticles = hotArticles.concat(normalArticles);
         } else {
-            this.sortArticleArray(articlesArray);
+            this.sortArticleArray(visibleArticles);
         }
 
         var articlesContainer = $(ext.articleSelector).first().parent();
         articlesContainer.empty();
-        articlesArray.forEach((article) => {
+        visibleArticles.forEach((article) => {
+            articlesContainer.append(article.get());
+        });
+        hiddenArticles.forEach((article) => {
             articlesContainer.append(article.get());
         });
     }
 
     sortArticleArray(articles: Article[]) {
         var sortingType = this.getCurrentSub().getSortingType();
-        articles.sort((a: Article, b: Article) => {
-            if (sortingType == SortingType.TitleAsc || sortingType == SortingType.TitleDesc) {
-                var titleA = a.getTitle();
-                var titleB = b.getTitle();
-                var sorting = titleA === titleB ? 0 : (titleA > titleB ? 1 : -1);
-                if (sortingType == SortingType.TitleDesc) {
-                    sorting = sorting * -1;
-                }
-                return sorting;
-            } else {
-                var popA = a.getPopularity();
-                var popB = b.getPopularity();
-                var i = ((sortingType == SortingType.PopularityAsc) ? 1 : -1);
-                return (popA - popB) * i;
-            }
-        });
+        articles.sort(this.articleSorterFactory.getSorter(sortingType));
     }
 
     isOldestFirst(): boolean {
@@ -285,39 +283,72 @@ export class ArticleManager {
 
 }
 
+class ArticleSorterFactory {
+    sorterByType: { [key: number]: (a: Article, b: Article) => number } = {};
+
+    constructor() {
+        function titleSorter(isAscending: boolean) {
+            var multiplier = isAscending ? 1 : -1;
+            return (a: Article, b: Article) => {
+                return a.getTitle().localeCompare(b.getTitle()) * multiplier;
+            }
+        }
+        function popularitySorter(isAscending: boolean) {
+            var multiplier = isAscending ? 1 : -1;
+            return (a: Article, b: Article) => {
+                return (a.getPopularity() - b.getPopularity()) * multiplier;
+            }
+        }
+        function publishDateSorter(isNewFirst: boolean) {
+            var multiplier = isNewFirst ? -1 : 1;
+            return (a: Article, b: Article) => {
+                return (a.getPublishAge() - b.getPublishAge()) * multiplier;
+            }
+        }
+
+        this.sorterByType[SortingType.TitleDesc] = titleSorter(false);
+        this.sorterByType[SortingType.TitleAsc] = titleSorter(true);
+        this.sorterByType[SortingType.PopularityDesc] = popularitySorter(false);
+        this.sorterByType[SortingType.PopularityAsc] = popularitySorter(true);
+        this.sorterByType[SortingType.PublishDateNewFirst] = publishDateSorter(true);
+        this.sorterByType[SortingType.PublishDateOldFirst] = publishDateSorter(false);
+    }
+
+    getSorter(sortingType: SortingType): (a: Article, b: Article) => number {
+        return this.sorterByType[sortingType];
+    }
+}
+
 class Article {
     private article: JQuery;
+    private title: string;
+    private popularity: number;
+    private publishAge: number;
 
     constructor(article: Element) {
         this.article = $(article);
-    }
-
-    get(): JQuery {
-        return this.article;
-    }
-
-    getTitle(): string {
-        var title: string;
+        
+        // Title
         if (this.article.hasClass(ext.magazineTopEntryClass)) {
-            title = this.article.find(ext.magazineTopEntryTitleSelector).text();
+            this.title = this.article.find(ext.magazineTopEntryTitleSelector).text();
         } else {
-            title = this.article.attr(ext.articleTitleAttribute)
+            this.title = this.article.attr(ext.articleTitleAttribute)
         }
-        return title.trim().toLowerCase();
-    }
-
-    getPopularity(): number {
+        this.title = this.title.trim().toLowerCase();
+        
+        // Popularity
         var popularityStr = this.article.find(ext.popularitySelector).text().trim();
         popularityStr = popularityStr.replace("+", "");
         if (popularityStr.indexOf("K") > -1) {
             popularityStr = popularityStr.replace("K", "");
             popularityStr += "000";
         }
-        var popularityNumber = Number(popularityStr);
-        return popularityNumber;
-    }
-
-    getPublishAge(): number {
+        this.popularity = Number(popularityStr);
+        
+        if (this.article.hasClass(ext.cardsView)) {
+            return;
+        }
+        // Publish age
         var ageStr: string;
         if (this.article.hasClass(ext.fullArticlesView)) {
             ageStr = this.article.find(ext.fullArticlesAgePredecessorSelector).next().attr(ext.publishAgeTimestampAttr);
@@ -327,8 +358,23 @@ class Article {
             ageStr = this.article.find(ext.publishAgeSpanSelector).attr(ext.publishAgeTimestampAttr);
         }
         var publishDate = ageStr.split("--")[1].replace(/[^:]*:/, "").trim();
-        var publishDateMs = Date.parse(publishDate);
-        return publishDateMs;
+        this.publishAge = Date.parse(publishDate);
+    }
+
+    get(): JQuery {
+        return this.article;
+    }
+
+    getTitle(): string {
+        return this.title;
+    }
+
+    getPopularity(): number {
+        return this.popularity;
+    }
+
+    getPublishAge(): number {
+        return this.publishAge;
     }
 
     isHot(): boolean {
@@ -340,7 +386,11 @@ class Article {
         return this.article.attr(ext.articleEntryIdAttribute);
     }
 
-    css(propertyName: string, value?: string | number) {
-        this.article.css(propertyName, value);
+    setVisible(visibile?: boolean) {
+        this.article.css("display", visibile == null ? "" : (visibile ? "" : "none"));
+    }
+
+    isVisible(): boolean {
+        return !(this.article.css("display") === "none");
     }
 }

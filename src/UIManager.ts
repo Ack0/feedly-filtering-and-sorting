@@ -139,6 +139,8 @@ export class UIManager {
             { name: "SortingType.TitleAsc", value: SortingType.TitleAsc },
             { name: "SortingType.PopularityAsc", value: SortingType.PopularityAsc },
             { name: "SortingType.TitleDesc", value: SortingType.TitleDesc },
+            { name: "SortingType.PublishDateNewFirst", value: SortingType.PublishDateNewFirst },
+            { name: "SortingType.PublishDateOldFirst", value: SortingType.PublishDateOldFirst },
             { name: "FilteringList.Type.FilteredOut", value: this.getFilteringListHTML(FilteringType.FilteredOut) },
             { name: "FilteringList.Type.RestrictedOn", value: this.getFilteringListHTML(FilteringType.RestrictedOn) },
             { name: "ImportMenu.SubscriptionOptions", value: this.getImportOptionsHTML() }
